@@ -6,81 +6,25 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1239</width>
-    <height>62</height>
+    <width>800</width>
+    <height>65</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
-  <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout"/>
-  </widget>
+  <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1239</width>
+     <width>800</width>
      <height>22</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menu123">
-    <property name="title">
-     <string>File</string>
-    </property>
-    <widget class="QMenu" name="menu456">
-     <property name="title">
-      <string>New</string>
-     </property>
-     <addaction name="action777"/>
-    </widget>
-    <addaction name="menu456"/>
-    <addaction name="actionOpen"/>
-   </widget>
-   <widget class="QMenu" name="menu444">
-    <property name="title">
-     <string>Edit</string>
-    </property>
-    <addaction name="actionUndo"/>
-    <addaction name="separator"/>
-    <addaction name="actionCut"/>
-    <addaction name="actionCopy"/>
-   </widget>
-   <addaction name="menu123"/>
-   <addaction name="menu444"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionAbout">
-   <property name="text">
-    <string>About</string>
-   </property>
-  </action>
-  <action name="action777">
-   <property name="text">
-    <string>Image</string>
-   </property>
-  </action>
-  <action name="actionOpen">
-   <property name="text">
-    <string>Open</string>
-   </property>
-  </action>
-  <action name="actionUndo">
-   <property name="text">
-    <string>Undo</string>
-   </property>
-  </action>
-  <action name="actionCut">
-   <property name="text">
-    <string>Cut</string>
-   </property>
-  </action>
-  <action name="actionCopy">
-   <property name="text">
-    <string>Copy</string>
-   </property>
-  </action>
  </widget>
  <resources/>
  <connections/>
