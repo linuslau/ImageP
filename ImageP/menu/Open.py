@@ -1,8 +1,10 @@
 import sys
 import cv2
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QFileDialog, QMessageBox, QGraphicsPixmapItem
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QFileDialog, QMessageBox, \
+    QGraphicsPixmapItem
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt
+
 
 class ImageViewer(QMainWindow):
     def __init__(self):
@@ -49,16 +51,26 @@ class ImageViewer(QMainWindow):
         self.scale_factor *= factor
         self.view.scale(factor, factor)
 
+
+# 全局变量，保存单一的 QApplication 实例和 ImageViewer 实例
+app = None
+viewer = None
+
+
 def menu_click():
+    global app, viewer
+
     options = QFileDialog.Options()
-    file_path, _ = QFileDialog.getOpenFileName(None, "Open Image File", "", "Image Files (*.jpg *.jpeg *.png *.bmp)", options=options)
+    file_path, _ = QFileDialog.getOpenFileName(None, "Open Image File", "", "Image Files (*.jpg *.jpeg *.png *.bmp)",
+                                               options=options)
 
     if file_path:
         try:
-            app = QApplication.instance()
             if not app:
                 app = QApplication(sys.argv)
-            viewer = ImageViewer()
+            if not viewer:
+                viewer = ImageViewer()
+
             viewer.open_image(file_path)
             viewer.show()
             app.exec_()
