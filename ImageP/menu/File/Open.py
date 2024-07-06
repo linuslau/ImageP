@@ -1,22 +1,24 @@
-from PyQt5.QtWidgets import QFileDialog, QLabel, QVBoxLayout, QWidget
+# File/open.py
+from PyQt5.QtWidgets import QFileDialog, QLabel, QMainWindow
 from PyQt5.QtGui import QPixmap
 
-def menu_click():
-    # 创建一个QFileDialog来选择图片
-    options = QFileDialog.Options()
-    file_name, _ = QFileDialog.getOpenFileName(None, "Open Image File", "", "Image Files (*.png *.jpg *.jpeg *.bmp)", options=options)
-    if file_name:
-        # 创建一个新的窗口来显示图片
-        window = QWidget()
-        window.setWindowTitle('Image Viewer')
-        layout = QVBoxLayout()
-        window.setLayout(layout)
+def handle_click():
+    print("Open file clicked")
 
-        # 加载并显示图片
-        label = QLabel()
-        pixmap = QPixmap(file_name)
-        label.setPixmap(pixmap)
-        layout.addWidget(label)
+    class ImageWindow(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            self.label = QLabel(self)
+            self.setCentralWidget(self.label)
+            self.show_image()
 
-        window.show()
-        return window
+        def show_image(self):
+            options = QFileDialog.Options()
+            file_name, _ = QFileDialog.getOpenFileName(self, "Open Image File", "", "Images (*.png *.xpm *.jpg);;All Files (*)", options=options)
+            if file_name:
+                pixmap = QPixmap(file_name)
+                self.label.setPixmap(pixmap.scaled(self.label.size(), aspectRatioMode=1))
+
+    window = ImageWindow()
+    window.show()
+

@@ -1,5 +1,5 @@
 import os
-from PyQt5.QtWidgets import QAction, QMessageBox
+from PyQt5.QtWidgets import QAction
 
 
 def load_menu_order(menu_path):
@@ -10,9 +10,8 @@ def load_menu_order(menu_path):
     return []
 
 
-def populate_menu(menu, folder_path, is_root=False):
+def populate_menu(menu, folder_path):
     ordered_items = load_menu_order(folder_path)
-
     items = os.listdir(folder_path)
     items = sorted(items, key=lambda x: (ordered_items.index(x) if x in ordered_items else float('inf'), x))
 
@@ -30,13 +29,18 @@ def populate_menu(menu, folder_path, is_root=False):
 
 
 def handle_menu_click(file_path):
-    if file_path.endswith('.py'):
-        # 如果是 Python 脚本文件，尝试导入并执行
-        module_name = os.path.splitext(os.path.basename(file_path))[0]
-        module_spec = __import__('menu.' + module_name, fromlist=[module_name])
-        if hasattr(module_spec, 'menu_click'):
-            window = module_spec.menu_click()
-            if window:
-                window.show()
-    else:
-        QMessageBox.warning(None, "Unsupported File", "This file type is not supported yet.")
+    # Convert the file path to a module path
+    relative_path = os.path.relpath(file_path, os.path.join(os.path.dirname(__file__), '..'))
+    module_name = relative_path.replace(os.path.sep, '.')  # Replace directory separators with dots
+    module_name = module_name.replace('.py', '')  # Remove .py extension
+
+    print(f"Trying to import module: ImageP.{module_name}")
+
+    try:
+        module_spec = __import__(f'ImageP.{module_name}', fromlist=['test1.3'])
+        if hasattr(module_spec, 'handle_click'):
+            module_spec.handle_click()
+    except ModuleNotFoundError as e:
+        print(f"Module not found: {e}")
+    except Exception as e:
+        print(f"Error while handling menu click: {e}")
