@@ -1,8 +1,33 @@
 from PyQt5 import QtWidgets
-from ImageP.ui.main_ui_qt5 import Ui_MainWindow
-from ImageP.utils.menu_populate import populate_menu
+from ui.main_ui_qt5 import Ui_MainWindow
+from utils.menu_populate import populate_menu
 import sys
 import os
+
+
+def load_menu_order(menu_path):
+    order_file = os.path.join(menu_path, 'order.txt')
+    if not os.path.exists(order_file):
+        return []
+    with open(order_file, 'r') as f:
+        return [line.strip() for line in f if line.strip()]
+
+
+def add_menu_item(menu, path, is_folder):
+    if is_folder:
+        sub_menu = menu.addMenu(os.path.basename(path))
+        populate_menu(sub_menu, path)
+    else:
+        action = menu.addAction(os.path.basename(path).replace('.py', ''))
+        action.triggered.connect(lambda: handle_menu_click(path))
+
+
+def handle_menu_click(file_path):
+    # 根据文件路径导入相应模块并调用预定义的函数
+    module_name = os.path.splitext(os.path.basename(file_path))[0]
+    module_spec = __import__('menu.' + module_name, fromlist=[module_name])
+    if hasattr(module_spec, 'menu_click'):
+        module_spec.menu_click()
 
 
 def main():
@@ -23,11 +48,14 @@ def main():
     print(f"Root menu path: {root_menu_path}")
 
     if os.path.exists(root_menu_path) and os.path.isdir(root_menu_path):
-        for folder in os.listdir(root_menu_path):
+        # 获取所有文件夹
+        folders = [folder for folder in os.listdir(root_menu_path) if
+                   os.path.isdir(os.path.join(root_menu_path, folder))]
+
+        for folder in sorted(folders):
             folder_path = os.path.join(root_menu_path, folder)
-            if os.path.isdir(folder_path):
-                root_menu = ui.menubar.addMenu(folder)
-                populate_menu(root_menu, folder_path)
+            root_menu = ui.menubar.addMenu(folder)
+            populate_menu(root_menu, folder_path)
 
     MainWindow.show()
     sys.exit(app.exec_())

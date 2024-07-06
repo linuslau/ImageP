@@ -1,26 +1,36 @@
 import os
-import importlib.util
+from PyQt5.QtWidgets import QAction
 
-def load_and_bind_action(action, module_path):
-    module_name = os.path.splitext(os.path.basename(module_path))[0]
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    if hasattr(module, 'handle_click'):
-        action.triggered.connect(module.handle_click)
 
-def populate_menu(menu, path):
-    print(f"Populating menu: {path}")
-    for item in os.listdir(path):
-        item_path = os.path.join(path, item)
+def load_menu_order(menu_path):
+    order_file_path = os.path.join(menu_path, 'order.txt')
+    if os.path.exists(order_file_path):
+        with open(order_file_path, 'r') as order_file:
+            return [line.strip() for line in order_file.readlines() if line.strip()]
+    return []
+
+
+def populate_menu(menu, folder_path):
+    ordered_items = load_menu_order(folder_path)
+
+    items = os.listdir(folder_path)
+    items = sorted(items, key=lambda x: (ordered_items.index(x) if x in ordered_items else float('inf'), x))
+
+    for item in items:
+        item_path = os.path.join(folder_path, item)
+        if item == '__pycache__':
+            continue
         if os.path.isdir(item_path):
-            if item == '__pycache__':
-                continue  # 忽略 __pycache__ 目录
-            print(f"Adding submenu for directory: {item_path}")
-            submenu = menu.addMenu(item)
-            populate_menu(submenu, item_path)
-        elif item.endswith('.py'):
-            file_name, _ = os.path.splitext(item)  # 分离文件名和后缀
-            print(f"Adding action for file: {item_path}")
-            action = menu.addAction(file_name)
-            load_and_bind_action(action, item_path)
+            sub_menu = menu.addMenu(item)
+            populate_menu(sub_menu, item_path)
+        elif item.endswith('.py') and item != '__init__.py':
+            action = QAction(item.replace('.py', ''), menu)
+            action.triggered.connect(lambda checked, path=item_path: handle_menu_click(path))
+            menu.addAction(action)
+
+
+def handle_menu_click(file_path):
+    module_name = os.path.splitext(os.path.basename(file_path))[0]
+    module_spec = __import__('menu.' + module_name, fromlist=[module_name])
+    if hasattr(module_spec, 'menu_click'):
+        module_spec.menu_click()
