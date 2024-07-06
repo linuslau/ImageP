@@ -1,4 +1,5 @@
 import os
+import importlib.util
 from PyQt5.QtWidgets import QAction
 
 
@@ -10,7 +11,7 @@ def load_menu_order(menu_path):
     return []
 
 
-def populate_menu(menu, folder_path):
+def populate_menu(menu, folder_path, status_bar):
     ordered_items = load_menu_order(folder_path)
     items = os.listdir(folder_path)
     items = sorted(items, key=lambda x: (ordered_items.index(x) if x in ordered_items else float('inf'), x))
@@ -21,26 +22,23 @@ def populate_menu(menu, folder_path):
             continue
         if os.path.isdir(item_path):
             sub_menu = menu.addMenu(item)
-            populate_menu(sub_menu, item_path)
+            sub_menu.hovered.connect(lambda: status_bar.showMessage(f'Hovering over {item}'))
+            populate_menu(sub_menu, item_path, status_bar)
         elif item.endswith('.py') and item != '__init__.py':
             action = QAction(item.replace('.py', ''), menu)
-            action.triggered.connect(lambda checked, path=item_path: handle_menu_click(path))
+            action.triggered.connect(lambda checked, path=item_path: handle_menu_click(path, status_bar))
+            action.hovered.connect(lambda: status_bar.showMessage(f'Hovering over {item}'))
             menu.addAction(action)
 
 
-def handle_menu_click(file_path):
-    # Convert the file path to a module path
+def handle_menu_click(file_path, status_bar):
     relative_path = os.path.relpath(file_path, os.path.join(os.path.dirname(__file__), '..'))
-    module_name = relative_path.replace(os.path.sep, '.')  # Replace directory separators with dots
-    module_name = module_name.replace('.py', '')  # Remove .py extension
-
-    print(f"Trying to import module: ImageP.{module_name}")
-
+    module_name = 'ImageP.' + relative_path.replace(os.path.sep, '.').replace('.py', '')
     try:
-        module_spec = __import__(f'ImageP.{module_name}', fromlist=['test1.3'])
+        module_spec = __import__(module_name, fromlist=[module_name.split('.')[-1]])
         if hasattr(module_spec, 'handle_click'):
             module_spec.handle_click()
     except ModuleNotFoundError as e:
-        print(f"Module not found: {e}")
+        status_bar.showMessage(f"Module not found: {e}")
     except Exception as e:
-        print(f"Error while handling menu click: {e}")
+        status_bar.showMessage(f"Error while handling menu click: {e}")
