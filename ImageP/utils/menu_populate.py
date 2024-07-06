@@ -1,5 +1,5 @@
 import os
-from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import QAction, QMessageBox
 
 
 def load_menu_order(menu_path):
@@ -30,9 +30,13 @@ def populate_menu(menu, folder_path, is_root=False):
 
 
 def handle_menu_click(file_path):
-    module_name = os.path.splitext(os.path.basename(file_path))[0]
-    module_spec = __import__('menu.' + module_name, fromlist=[module_name])
-    if hasattr(module_spec, 'menu_click'):
-        window = module_spec.menu_click()
-        if window:
-            window.show()
+    if file_path.endswith('.py'):
+        # 如果是 Python 脚本文件，尝试导入并执行
+        module_name = os.path.splitext(os.path.basename(file_path))[0]
+        module_spec = __import__('menu.' + module_name, fromlist=[module_name])
+        if hasattr(module_spec, 'menu_click'):
+            window = module_spec.menu_click()
+            if window:
+                window.show()
+    else:
+        QMessageBox.warning(None, "Unsupported File", "This file type is not supported yet.")

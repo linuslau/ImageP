@@ -30,8 +30,6 @@ def handle_menu_click(file_path):
         window = module_spec.menu_click()
         if window:
             window.show()
-
-
 def main():
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
