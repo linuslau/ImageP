@@ -3,6 +3,9 @@ from ui.main_ui_qt5 import Ui_MainWindow
 from utils.menu_populate import populate_menu
 import sys
 import os
+from PyQt5 import QtWidgets
+from ui.main_ui_qt5 import Ui_MainWindow
+from utils.menu_populate import populate_icons
 
 def load_menu_order(menu_path):
     order_file = os.path.join(menu_path, 'order.txt')
@@ -43,6 +46,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # 定位到安装路径中的 menu 目录
         root_menu_path = os.path.join(script_dir, 'menu')
 
+        # Getting the root icons path
+        icons_path = os.path.join(os.path.dirname(__file__), 'icons')
+        print(f"Root icons path: {icons_path}")
+
         # 如果路径不存在，尝试从包安装目录查找
         if not os.path.exists(root_menu_path):
             root_menu_path = os.path.join(os.path.dirname(__file__), 'menu')
@@ -57,6 +64,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 item_path = os.path.join(root_menu_path, item)
                 if (os.path.isdir(item_path) and item != '__pycache__') or (item.endswith('.py') and item != '__init__.py'):
                     add_menu_item(self.ui.menubar, item_path, os.path.isdir(item_path), self.ui.statusbar)
+
+        # Check if the icons directory exists
+        if os.path.exists(icons_path) and os.path.isdir(icons_path):
+            populate_icons(self.ui.toolBar, icons_path, self.ui.statusbar)
 
         self.ui.statusbar.showMessage("Welcome to use ImageP")
 
