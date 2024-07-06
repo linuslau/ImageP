@@ -27,7 +27,9 @@ def handle_menu_click(file_path):
     module_name = os.path.splitext(os.path.basename(file_path))[0]
     module_spec = __import__('menu.' + module_name, fromlist=[module_name])
     if hasattr(module_spec, 'menu_click'):
-        module_spec.menu_click()
+        window = module_spec.menu_click()
+        if window:
+            window.show()
 
 
 def main():
@@ -48,14 +50,13 @@ def main():
     print(f"Root menu path: {root_menu_path}")
 
     if os.path.exists(root_menu_path) and os.path.isdir(root_menu_path):
-        # 获取所有文件夹
-        folders = [folder for folder in os.listdir(root_menu_path) if
-                   os.path.isdir(os.path.join(root_menu_path, folder))]
+        # 获取所有文件夹和文件
+        items = os.listdir(root_menu_path)
 
-        for folder in sorted(folders):
-            folder_path = os.path.join(root_menu_path, folder)
-            root_menu = ui.menubar.addMenu(folder)
-            populate_menu(root_menu, folder_path)
+        for item in sorted(items):
+            item_path = os.path.join(root_menu_path, item)
+            if (os.path.isdir(item_path) and item != '__pycache__') or (item.endswith('.py') and item != '__init__.py'):
+                add_menu_item(ui.menubar, item_path, os.path.isdir(item_path))
 
     MainWindow.show()
     sys.exit(app.exec_())

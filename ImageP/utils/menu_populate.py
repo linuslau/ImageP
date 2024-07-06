@@ -10,7 +10,7 @@ def load_menu_order(menu_path):
     return []
 
 
-def populate_menu(menu, folder_path):
+def populate_menu(menu, folder_path, is_root=False):
     ordered_items = load_menu_order(folder_path)
 
     items = os.listdir(folder_path)
@@ -33,4 +33,6 @@ def handle_menu_click(file_path):
     module_name = os.path.splitext(os.path.basename(file_path))[0]
     module_spec = __import__('menu.' + module_name, fromlist=[module_name])
     if hasattr(module_spec, 'menu_click'):
-        module_spec.menu_click()
+        window = module_spec.menu_click()
+        if window:
+            window.show()
