@@ -1,5 +1,4 @@
 import os
-import importlib.util
 from PyQt5.QtWidgets import QAction
 from PyQt5.QtGui import QIcon
 
@@ -12,7 +11,11 @@ def load_menu_order(menu_path):
 
 def populate_icons(toolbar, icons_path, status_bar):
     items = os.listdir(icons_path)
-    for item in sorted(items):
+    ordered_items = load_menu_order(icons_path)
+
+    items = sorted(items, key=lambda x: (ordered_items.index(x) if x in ordered_items else float('inf'), x))
+
+    for item in items:
         item_path = os.path.join(icons_path, item)
         if os.path.isdir(item_path):
             add_icon_action(toolbar, item_path, status_bar)
@@ -43,9 +46,7 @@ def add_icon_action(toolbar, icon_path, status_bar):
     py_file = os.path.join(icon_path, 'image.py')
 
     if os.path.exists(image_file) and os.path.exists(py_file):
-        action = QAction(toolbar)
-        action.setIcon(QIcon(image_file))
-        action.setToolTip(os.path.basename(icon_path))
+        action = QAction(QIcon(image_file), os.path.basename(icon_path), toolbar)
         action.triggered.connect(lambda: handle_icon_click(py_file))
         action.hovered.connect(lambda: status_bar.showMessage(os.path.basename(icon_path)))
         toolbar.addAction(action)
@@ -65,7 +66,6 @@ def handle_menu_click(file_path):
 def handle_icon_click(py_file):
     relative_path = os.path.relpath(py_file, os.path.join(os.path.dirname(__file__), '..'))
     module_name = 'ImageP.' + relative_path.replace(os.path.sep, '.').replace('.py', '')
-    #module_name = os.path.splitext(os.path.basename(py_file))[0]
     try:
         module_spec = __import__(module_name, fromlist=[module_name])
         if hasattr(module_spec, 'handle_click'):

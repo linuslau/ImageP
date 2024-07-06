@@ -1,11 +1,8 @@
 from PyQt5 import QtWidgets, QtCore
 from ui.main_ui_qt5 import Ui_MainWindow
-from utils.menu_populate import populate_menu
+from utils.menu_populate import populate_menu, populate_icons
 import sys
 import os
-from PyQt5 import QtWidgets
-from ui.main_ui_qt5 import Ui_MainWindow
-from utils.menu_populate import populate_icons
 
 def load_menu_order(menu_path):
     order_file = os.path.join(menu_path, 'order.txt')
