@@ -13,6 +13,7 @@ def load_menu_order(menu_path):
 
 def populate_menu(menu, folder_path, status_bar):
     ordered_items = load_menu_order(folder_path)
+
     items = os.listdir(folder_path)
     items = sorted(items, key=lambda x: (ordered_items.index(x) if x in ordered_items else float('inf'), x))
 
@@ -22,16 +23,15 @@ def populate_menu(menu, folder_path, status_bar):
             continue
         if os.path.isdir(item_path):
             sub_menu = menu.addMenu(item)
-            sub_menu.hovered.connect(lambda: status_bar.showMessage(f'Hovering over {item}'))
             populate_menu(sub_menu, item_path, status_bar)
         elif item.endswith('.py') and item != '__init__.py':
             action = QAction(item.replace('.py', ''), menu)
-            action.triggered.connect(lambda checked, path=item_path: handle_menu_click(path, status_bar))
-            action.hovered.connect(lambda: status_bar.showMessage(f'Hovering over {item}'))
+            action.triggered.connect(lambda checked, path=item_path: handle_menu_click(path))
+            action.hovered.connect(lambda: status_bar.showMessage(item.replace('.py', '')))
             menu.addAction(action)
 
 
-def handle_menu_click(file_path, status_bar):
+def handle_menu_click(file_path):
     relative_path = os.path.relpath(file_path, os.path.join(os.path.dirname(__file__), '..'))
     module_name = 'ImageP.' + relative_path.replace(os.path.sep, '.').replace('.py', '')
     try:
@@ -39,6 +39,6 @@ def handle_menu_click(file_path, status_bar):
         if hasattr(module_spec, 'handle_click'):
             module_spec.handle_click()
     except ModuleNotFoundError as e:
-        status_bar.showMessage(f"Module not found: {e}")
+        print(f"Module not found: {e}")
     except Exception as e:
-        status_bar.showMessage(f"Error while handling menu click: {e}")
+        print(f"Error while handling menu click: {e}")
