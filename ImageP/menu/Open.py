@@ -1,28 +1,67 @@
+import sys
 import cv2
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QFileDialog, QMessageBox, QGraphicsPixmapItem
+from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtCore import Qt
+
+class ImageViewer(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Image Viewer")
+        self.setGeometry(100, 100, 800, 600)
+
+        self.view = QGraphicsView(self)
+        self.setCentralWidget(self.view)
+        self.scene = QGraphicsScene(self)
+        self.view.setScene(self.scene)
+
+        self.pixmap_item = QGraphicsPixmapItem()
+        self.scene.addItem(self.pixmap_item)
+
+        self.scale_factor = 1.0
+        self.view.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+
+    def open_image(self, file_path):
+        image = cv2.imread(file_path)
+        if image is None:
+            raise ValueError("Failed to load image")
+
+        height, width, channel = image.shape
+        bytes_per_line = 3 * width
+        q_image = QImage(image.data, width, height, bytes_per_line, QImage.Format_RGB888).rgbSwapped()
+
+        self.pixmap_item.setPixmap(QPixmap.fromImage(q_image))
+        self.fit_to_window()
+
+    def fit_to_window(self):
+        self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
+
+    def wheelEvent(self, event):
+        if event.modifiers() == Qt.ControlModifier:
+            if event.angleDelta().y() > 0:
+                self.scale_image(1.25)
+            else:
+                self.scale_image(0.8)
+        else:
+            super().wheelEvent(event)
+
+    def scale_image(self, factor):
+        self.scale_factor *= factor
+        self.view.scale(factor, factor)
 
 def menu_click():
-    # 创建文件对话框以选择图像文件
     options = QFileDialog.Options()
     file_path, _ = QFileDialog.getOpenFileName(None, "Open Image File", "", "Image Files (*.jpg *.jpeg *.png *.bmp)", options=options)
 
     if file_path:
         try:
-            # 使用 OpenCV 打开并显示图像
-            image = cv2.imread(file_path)
-            if image is None:
-                raise ValueError("Failed to load image")
-
-            # 缩小图像至 25%
-            scale_percent = 25
-            width = int(image.shape[1] * scale_percent / 100)
-            height = int(image.shape[0] * scale_percent / 100)
-            dim = (width, height)
-            resized_image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
-
-            cv2.imshow('Image Viewer', resized_image)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+            app = QApplication.instance()
+            if not app:
+                app = QApplication(sys.argv)
+            viewer = ImageViewer()
+            viewer.open_image(file_path)
+            viewer.show()
+            app.exec_()
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to open image: {str(e)}")
     else:
