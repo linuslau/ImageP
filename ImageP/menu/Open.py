@@ -16,9 +16,7 @@ class ImageViewer(QMainWindow):
         self.scene = QGraphicsScene(self)
         self.view.setScene(self.scene)
 
-        self.pixmap_item = QGraphicsPixmapItem()
-        self.scene.addItem(self.pixmap_item)
-
+        self.pixmap_item = None  # Store the current pixmap item
         self.loading_label = QLabel("Loading image...", self)
         self.loading_label.setAlignment(Qt.AlignCenter)
         self.loading_label.setStyleSheet("QLabel { background-color : white; color : black; }")
@@ -31,22 +29,34 @@ class ImageViewer(QMainWindow):
     def open_image(self, file_path):
         self.loading_label.setVisible(True)
         self.show()
+
+        # Clean up previous pixmap item
+        if self.pixmap_item:
+            self.scene.removeItem(self.pixmap_item)
+            self.pixmap_item = None
+
         self.thread = ImageLoaderThread(file_path)
         self.thread.image_loaded.connect(self.display_image)
         self.thread.start()
 
     def display_image(self, q_image):
-        self.view.resetTransform()  # Reset the view transformation
-        self.scene.clear()  # Clear the scene
-        self.pixmap_item = QGraphicsPixmapItem(QPixmap.fromImage(q_image))
-        self.scene.addItem(self.pixmap_item)
-        self.fit_to_window()
-        self.loading_label.setVisible(False)
+        # Create a new pixmap item
+        pixmap_item = QGraphicsPixmapItem(QPixmap.fromImage(q_image))
+        self.scene.addItem(pixmap_item)
 
-    def fit_to_window(self):
-        self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
+        # Fit view to the new pixmap item
+        pixmap_item_width = pixmap_item.boundingRect().width()
+        pixmap_item_height = pixmap_item.boundingRect().height()
+        self.view.setSceneRect(0, 0, pixmap_item_width, pixmap_item_height)
+        self.view.fitInView(pixmap_item, Qt.KeepAspectRatio)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # Hide loading label
+        self.loading_label.setVisible(False)
+
+        # Store the current pixmap item
+        self.pixmap_item = pixmap_item
 
     def wheelEvent(self, event):
         if event.modifiers() == Qt.ControlModifier:
