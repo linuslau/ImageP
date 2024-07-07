@@ -1,10 +1,8 @@
-import sys
 import cv2
-from PyQt5.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QFileDialog, QMessageBox, \
-    QGraphicsPixmapItem
+from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QFileDialog, QMessageBox, QGraphicsPixmapItem, QApplication
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import Qt
-
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
+import sys
 
 class ImageViewer(QMainWindow):
     def __init__(self):
@@ -24,14 +22,11 @@ class ImageViewer(QMainWindow):
         self.view.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
 
     def open_image(self, file_path):
-        image = cv2.imread(file_path)
-        if image is None:
-            raise ValueError("Failed to load image")
+        self.thread = ImageLoaderThread(file_path)
+        self.thread.image_loaded.connect(self.display_image)
+        self.thread.start()
 
-        height, width, channel = image.shape
-        bytes_per_line = 3 * width
-        q_image = QImage(image.data, width, height, bytes_per_line, QImage.Format_RGB888).rgbSwapped()
-
+    def display_image(self, q_image):
         self.pixmap_item.setPixmap(QPixmap.fromImage(q_image))
         self.fit_to_window()
 
@@ -52,17 +47,27 @@ class ImageViewer(QMainWindow):
         self.view.scale(factor, factor)
 
 
-# 全局变量，保存单一的 QApplication 实例和 ImageViewer 实例
-app = None
-viewer = None
+class ImageLoaderThread(QThread):
+    image_loaded = pyqtSignal(QImage)
+
+    def __init__(self, file_path):
+        super().__init__()
+        self.file_path = file_path
+
+    def run(self):
+        image = cv2.imread(self.file_path)
+        if image is None:
+            raise ValueError("Failed to load image")
+
+        height, width, channel = image.shape
+        bytes_per_line = 3 * width
+        q_image = QImage(image.data, width, height, bytes_per_line, QImage.Format_RGB888).rgbSwapped()
+        self.image_loaded.emit(q_image)
 
 
 def menu_click():
-    global app, viewer
-
     options = QFileDialog.Options()
-    file_path, _ = QFileDialog.getOpenFileName(None, "Open Image File", "", "Image Files (*.jpg *.jpeg *.png *.bmp)",
-                                               options=options)
+    file_path, _ = QFileDialog.getOpenFileName(None, "Open Image File", "", "Image Files (*.jpg *.jpeg *.png *.bmp)", options=options)
 
     if file_path:
         try:
@@ -71,6 +76,7 @@ def menu_click():
             if not viewer:
                 viewer = ImageViewer()
 
+            viewer = ImageViewer()
             viewer.open_image(file_path)
             viewer.show()
             app.exec_()
