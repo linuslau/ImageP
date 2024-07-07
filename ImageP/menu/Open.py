@@ -45,6 +45,8 @@ class ImageViewer(QMainWindow):
 
     def fit_to_window(self):
         self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
+        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
     def wheelEvent(self, event):
         if event.modifiers() == Qt.ControlModifier:
