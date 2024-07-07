@@ -1,5 +1,5 @@
 import cv2
-from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QFileDialog, QMessageBox, QGraphicsPixmapItem, QApplication
+from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QFileDialog, QMessageBox, QGraphicsPixmapItem, QApplication, QLabel
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import sys
@@ -19,10 +19,18 @@ class ImageViewer(QMainWindow):
         self.pixmap_item = QGraphicsPixmapItem()
         self.scene.addItem(self.pixmap_item)
 
+        self.loading_label = QLabel("Loading image...", self)
+        self.loading_label.setAlignment(Qt.AlignCenter)
+        self.loading_label.setStyleSheet("QLabel { background-color : white; color : black; }")
+        self.loading_label.setGeometry(0, 0, 800, 600)
+        self.loading_label.setVisible(False)
+
         self.scale_factor = 1.0
         self.view.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
 
     def open_image(self, file_path):
+        self.loading_label.setVisible(True)
+        self.show()
         self.thread = ImageLoaderThread(file_path)
         self.thread.image_loaded.connect(self.display_image)
         self.thread.start()
@@ -30,7 +38,7 @@ class ImageViewer(QMainWindow):
     def display_image(self, q_image):
         self.pixmap_item.setPixmap(QPixmap.fromImage(q_image))
         self.fit_to_window()
-        self.show()
+        self.loading_label.setVisible(False)
 
     def fit_to_window(self):
         self.view.fitInView(self.pixmap_item, Qt.KeepAspectRatio)
@@ -56,13 +64,18 @@ class ImageLoaderThread(QThread):
         self.file_path = file_path
 
     def run(self):
+        start_time = time.time()
         image = cv2.imread(self.file_path)
         if image is None:
             raise ValueError("Failed to load image")
+        print(f"Image load time: {time.time() - start_time:.4f} seconds")
 
+        start_time = time.time()
         height, width, channel = image.shape
         bytes_per_line = 3 * width
         q_image = QImage(image.data, width, height, bytes_per_line, QImage.Format_RGB888).rgbSwapped()
+        print(f"Image conversion time: {time.time() - start_time:.4f} seconds")
+
         self.image_loaded.emit(q_image)
 
 # 全局变量，保存单一的 QApplication 实例和 ImageViewer 实例
@@ -92,10 +105,6 @@ def menu_click():
             step_time = time.time()
             viewer.open_image(file_path)
             print(f"Open image time: {time.time() - step_time:.4f} seconds")
-
-            step_time = time.time()
-            #app.exec_()
-            print(f"App exec time: {time.time() - step_time:.4f} seconds")
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to open image: {str(e)}")
     else:
