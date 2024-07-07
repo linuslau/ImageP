@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QMainWindow, QGraphicsView, QGraphicsScene, QFileDia
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import sys
+import time
 
 class ImageViewer(QMainWindow):
     def __init__(self):
@@ -71,18 +72,30 @@ viewer = None
 def menu_click():
     global app, viewer
 
+    start_time = time.time()
     options = QFileDialog.Options()
     file_path, _ = QFileDialog.getOpenFileName(None, "Open Image File", "", "Image Files (*.jpg *.jpeg *.png *.bmp)", options=options)
+    print(f"File dialog time: {time.time() - start_time:.4f} seconds")
 
     if file_path:
         try:
+            step_time = time.time()
             if not app:
                 app = QApplication(sys.argv)
+            print(f"QApplication creation time: {time.time() - step_time:.4f} seconds")
+
+            step_time = time.time()
             if not viewer:
                 viewer = ImageViewer()
+            print(f"ImageViewer creation time: {time.time() - step_time:.4f} seconds")
 
+            step_time = time.time()
             viewer.open_image(file_path)
-            app.exec_()
+            print(f"Open image time: {time.time() - step_time:.4f} seconds")
+
+            step_time = time.time()
+            #app.exec_()
+            print(f"App exec time: {time.time() - step_time:.4f} seconds")
         except Exception as e:
             QMessageBox.critical(None, "Error", f"Failed to open image: {str(e)}")
     else:
