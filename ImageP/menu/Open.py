@@ -36,7 +36,10 @@ class ImageViewer(QMainWindow):
         self.thread.start()
 
     def display_image(self, q_image):
-        self.pixmap_item.setPixmap(QPixmap.fromImage(q_image))
+        self.view.resetTransform()  # Reset the view transformation
+        self.scene.clear()  # Clear the scene
+        self.pixmap_item = QGraphicsPixmapItem(QPixmap.fromImage(q_image))
+        self.scene.addItem(self.pixmap_item)
         self.fit_to_window()
         self.loading_label.setVisible(False)
 
