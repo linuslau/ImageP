@@ -6,13 +6,16 @@ import numpy as np
 
 # 全局变量
 drawing = False  # 是否正在绘制
-moving = False   # 是否正在移动
+moving = False  # 是否正在移动
 resizing = False  # 是否正在调整大小
 rect_start = None  # 矩形的起始点
-rect_end = None    # 矩形的结束点
-rects = []        # 存储矩形的列表
+rect_end = None  # 矩形的结束点
+rects = []  # 存储矩形的列表
 click_x, click_y = None, None  # 右键点击的位置
 control_points = []  # 控制点的列表
+current_rect_index = None  # 当前正在调整大小的矩形索引
+dragging_control_point = None  # 当前正在拖动的控制点
+
 
 def show_rect_info(rect):
     """弹出窗口显示矩形信息"""
@@ -20,6 +23,7 @@ def show_rect_info(rect):
     root.withdraw()  # 隐藏主窗口
     messagebox.showinfo("Rectangle Info", f"Top-left: {rect[0]}\nBottom-right: {rect[1]}")
     root.destroy()
+
 
 def show_gray_value(x, y):
     """计算并显示指定位置的灰度值"""
@@ -33,6 +37,7 @@ def show_gray_value(x, y):
     messagebox.showinfo("Gray Value", f"Gray Value at ({x}, {y}): {gray_value}")
     root.destroy()
 
+
 def draw_rectangle(image, rect):
     """在图像上绘制矩形及其控制点"""
     temp_image = image.copy()
@@ -40,6 +45,7 @@ def draw_rectangle(image, rect):
     for point in control_points:
         cv2.circle(temp_image, point, 5, (0, 0, 255), -1)
     return temp_image
+
 
 def update_control_points(rect):
     """更新控制点的位置"""
@@ -54,11 +60,12 @@ def update_control_points(rect):
         ((x1 + x2) // 2, y1),  # Top-center
         ((x1 + x2) // 2, y2),  # Bottom-center
         (x1, (y1 + y2) // 2),  # Left-center
-        (x2, (y1 + y2) // 2)   # Right-center
+        (x2, (y1 + y2) // 2)  # Right-center
     ]
 
+
 def handle_mouse_event(event, x, y, flags, param):
-    global rect_start, rect_end, drawing, moving, resizing, rects, click_x, click_y, control_points
+    global rect_start, rect_end, drawing, moving, resizing, rects, click_x, click_y, control_points, current_rect_index, dragging_control_point
 
     if event == cv2.EVENT_RBUTTONDOWN:
         click_x, click_y = x, y  # 保存右键点击的位置
@@ -83,15 +90,18 @@ def handle_mouse_event(event, x, y, flags, param):
     elif event == cv2.EVENT_LBUTTONDOWN:
         if not drawing and not moving and not resizing:
             # 检查是否点击在现有矩形上
-            for rect in rects:
+            for i, rect in enumerate(rects):
                 if (rect[0][0] <= x <= rect[1][0] and rect[0][1] <= y <= rect[1][1]):
                     # 检查是否点击在控制点上
-                    for point in control_points:
+                    for j, point in enumerate(control_points):
                         if np.linalg.norm(np.array(point) - np.array((x, y))) <= 5:
                             resizing = True
+                            current_rect_index = i
+                            dragging_control_point = j
                             rect_start = (x, y)
                             return
                     moving = True
+                    current_rect_index = i
                     rect_start = (x, y)
                     return
             # 取消之前的矩形
@@ -111,23 +121,43 @@ def handle_mouse_event(event, x, y, flags, param):
             # 实时显示矩形
             temp_image = draw_rectangle(image, (rect_start, (x, y)))
             cv2.imshow('Image with Rectangle', temp_image)
-        elif moving:
+        elif moving and current_rect_index is not None:
             # 移动矩形
             dx, dy = x - rect_start[0], y - rect_start[1]
             for i in range(len(rects)):
-                rects[i] = ((rects[i][0][0] + dx, rects[i][0][1] + dy),
-                            (rects[i][1][0] + dx, rects[i][1][1] + dy))
+                if i == current_rect_index:
+                    rects[i] = ((rects[i][0][0] + dx, rects[i][0][1] + dy),
+                                (rects[i][1][0] + dx, rects[i][1][1] + dy))
             rect_start = (x, y)
-            temp_image = draw_rectangle(image, rects[0])
+            temp_image = draw_rectangle(image, rects[current_rect_index])
             cv2.imshow('Image with Rectangle', temp_image)
-        elif resizing:
+        elif resizing and current_rect_index is not None and dragging_control_point is not None:
             # 调整矩形大小
-            x1, y1 = rect_start
-            x2, y2 = x, y
-            # 计算新的矩形范围
-            rects[0] = ((min(x1, x2), min(y1, y2)), (max(x1, x2), max(y1, y2)))
-            update_control_points(rects[0])
-            temp_image = draw_rectangle(image, rects[0])
+            rect = rects[current_rect_index]
+            x1, y1 = rect[0]
+            x2, y2 = rect[1]
+
+            if dragging_control_point == 0:  # Top-left
+                x1, y1 = x, y
+            elif dragging_control_point == 1:  # Top-right
+                x2, y1 = x, y
+            elif dragging_control_point == 2:  # Bottom-left
+                x1, y2 = x, y
+            elif dragging_control_point == 3:  # Bottom-right
+                x2, y2 = x, y
+            elif dragging_control_point == 4:  # Top-center
+                y1 = y
+            elif dragging_control_point == 5:  # Bottom-center
+                y2 = y
+            elif dragging_control_point == 6:  # Left-center
+                x1 = x
+            elif dragging_control_point == 7:  # Right-center
+                x2 = x
+
+            # 更新矩形
+            rects[current_rect_index] = ((x1, y1), (x2, y2))
+            update_control_points(rects[current_rect_index])
+            temp_image = draw_rectangle(image, rects[current_rect_index])
             cv2.imshow('Image with Rectangle', temp_image)
     elif event == cv2.EVENT_LBUTTONUP:
         if drawing:
@@ -135,8 +165,8 @@ def handle_mouse_event(event, x, y, flags, param):
             drawing = False
             rect_end = (x, y)
             rects.append((rect_start, rect_end))
-            update_control_points(rects[0])
-            temp_image = draw_rectangle(image, rects[0])
+            update_control_points(rects[-1])
+            temp_image = draw_rectangle(image, rects[-1])
             cv2.imshow('Image with Rectangle', temp_image)
         elif moving:
             # 完成移动矩形
@@ -147,6 +177,8 @@ def handle_mouse_event(event, x, y, flags, param):
             # 完成调整大小
             resizing = False
             rect_end = (x, y)
+            dragging_control_point = None
+
 
 # 读取图像
 image = cv2.imread(r'boats.jpg')
