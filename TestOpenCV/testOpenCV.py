@@ -101,7 +101,7 @@ def handle_mouse_event(event, x, y, flags, param):
                 if (rect[0][0] <= x <= rect[1][0] and rect[0][1] <= y <= rect[1][1]):
                     # 检查是否点击在控制点上
                     for j, point in enumerate(control_points):
-                        if np.linalg.norm(np.array(point) - np.array((x, y))) <= 40:  # 增大阈值
+                        if np.linalg.norm(np.array(point) - np.array((x, y))) <= 10:  # 增大阈值
                             resizing = True
                             current_rect_index = i
                             dragging_control_point = j
@@ -189,13 +189,12 @@ def handle_mouse_event(event, x, y, flags, param):
         elif moving:
             # 完成移动矩形
             moving = False
-            rect_end = (x, y)
-            rect_start = (rect_start[0] + (x - rect_start[0]), rect_start[1] + (y - rect_start[1]))
+            rect_start = None
         elif resizing:
             # 完成调整大小
             resizing = False
-            rect_end = (x, y)
             dragging_control_point = None
+            rect_start = None
 
 # 读取图像
 image = cv2.imread(r'boats.jpg')
