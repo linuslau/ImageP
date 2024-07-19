@@ -3,6 +3,8 @@ import tkinter as tk
 from tkinter import messagebox
 import threading
 import numpy as np
+import ctypes
+from ctypes import wintypes
 
 # 全局变量
 drawing = False  # 是否正在绘制
@@ -15,7 +17,16 @@ click_x, click_y = None, None  # 右键点击的位置
 control_points = []  # 控制点的列表
 current_rect_index = None  # 当前正在调整大小的矩形索引
 dragging_control_point = None  # 当前正在拖动的控制点
+hovering_control_point = None  # 当前悬停的控制点
 
+# Windows API 设置鼠标指针
+class Cursor:
+    ARROW = 32512
+    HAND = 32649
+
+    @staticmethod
+    def set_cursor(cursor_id):
+        ctypes.windll.user32.SetCursor(ctypes.windll.user32.LoadCursorW(0, cursor_id))
 
 def show_rect_info(rect):
     """弹出窗口显示矩形信息"""
@@ -23,7 +34,6 @@ def show_rect_info(rect):
     root.withdraw()  # 隐藏主窗口
     messagebox.showinfo("Rectangle Info", f"Top-left: {rect[0]}\nBottom-right: {rect[1]}")
     root.destroy()
-
 
 def show_gray_value(x, y):
     """计算并显示指定位置的灰度值"""
@@ -37,7 +47,6 @@ def show_gray_value(x, y):
     messagebox.showinfo("Gray Value", f"Gray Value at ({x}, {y}): {gray_value}")
     root.destroy()
 
-
 def draw_rectangle(image, rect):
     """在图像上绘制矩形及其控制点"""
     temp_image = image.copy()
@@ -45,7 +54,6 @@ def draw_rectangle(image, rect):
     for point in control_points:
         cv2.circle(temp_image, point, 5, (0, 0, 255), -1)
     return temp_image
-
 
 def update_control_points(rect):
     """更新控制点的位置"""
@@ -63,9 +71,8 @@ def update_control_points(rect):
         (x2, (y1 + y2) // 2)  # Right-center
     ]
 
-
 def handle_mouse_event(event, x, y, flags, param):
-    global rect_start, rect_end, drawing, moving, resizing, rects, click_x, click_y, control_points, current_rect_index, dragging_control_point
+    global rect_start, rect_end, drawing, moving, resizing, rects, click_x, click_y, control_points, current_rect_index, dragging_control_point, hovering_control_point
 
     if event == cv2.EVENT_RBUTTONDOWN:
         click_x, click_y = x, y  # 保存右键点击的位置
@@ -94,7 +101,7 @@ def handle_mouse_event(event, x, y, flags, param):
                 if (rect[0][0] <= x <= rect[1][0] and rect[0][1] <= y <= rect[1][1]):
                     # 检查是否点击在控制点上
                     for j, point in enumerate(control_points):
-                        if np.linalg.norm(np.array(point) - np.array((x, y))) <= 5:
+                        if np.linalg.norm(np.array(point) - np.array((x, y))) <= 40:  # 增大阈值
                             resizing = True
                             current_rect_index = i
                             dragging_control_point = j
@@ -117,6 +124,17 @@ def handle_mouse_event(event, x, y, flags, param):
             temp_image = draw_rectangle(image, (rect_start, rect_end))
             cv2.imshow('Image with Rectangle', temp_image)
     elif event == cv2.EVENT_MOUSEMOVE:
+        # 检查是否在控制点上
+        if not drawing and not moving and not resizing:
+            hovering_control_point = None
+            for i, point in enumerate(control_points):
+                if np.linalg.norm(np.array(point) - np.array((x, y))) <= 10:  # 增大阈值
+                    hovering_control_point = i
+                    break
+            if hovering_control_point is not None:
+                Cursor.set_cursor(Cursor.HAND)
+            else:
+                Cursor.set_cursor(Cursor.ARROW)
         if drawing:
             # 实时显示矩形
             temp_image = draw_rectangle(image, (rect_start, (x, y)))
@@ -178,7 +196,6 @@ def handle_mouse_event(event, x, y, flags, param):
             resizing = False
             rect_end = (x, y)
             dragging_control_point = None
-
 
 # 读取图像
 image = cv2.imread(r'boats.jpg')
