@@ -1,5 +1,6 @@
 import cv2
 import tkinter as tk
+from tkinter import ttk
 from tkinter import messagebox
 import threading
 import numpy as np
@@ -106,6 +107,30 @@ def show_measure_menu():
     def on_cancel():
         root.destroy()
 
+    def calculate_metrics(rect):
+        """计算矩形区域的灰度值统计信息"""
+        x1, y1 = rect[0]
+        x2, y2 = rect[1]
+        # 裁剪出矩形区域
+        roi = image[y1:y2, x1:x2]
+        # 转换为灰度图像
+        gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        # 计算统计信息
+        area = gray_roi.size
+        mean = np.mean(gray_roi)
+        min_val = np.min(gray_roi)
+        max_val = np.max(gray_roi)
+        return area, mean, min_val, max_val
+
+    def update_table(rect):
+        """更新表格中的数据"""
+        area, mean, min_val, max_val = calculate_metrics(rect)
+        # 如果表格没有行，则插入新行
+        if not table.get_children():
+            table.insert('', 'end', iid=1, values=(area, f'{mean:.2f}', min_val, max_val))
+        else:
+            table.item(1, values=(area, f'{mean:.2f}', min_val, max_val))
+
     root = tk.Tk()
     root.title("Measure")
 
@@ -148,6 +173,24 @@ def show_measure_menu():
     # 显示菜单栏
     root.config(menu=menu_bar)
 
+    # 创建表格
+    table_frame = tk.Frame(root)
+    table_frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+
+    table = ttk.Treeview(table_frame, columns=('Area', 'Mean', 'Min', 'Max'), show='headings')
+    table.heading('Area', text='Area')
+    table.heading('Mean', text='Mean')
+    table.heading('Min', text='Min')
+    table.heading('Max', text='Max')
+
+    # 初始行
+    table.insert('', 'end', iid=1, values=('0', '0', '0', '0'))
+    table.pack(fill=tk.BOTH, expand=True)
+
+    # 更新表格数据
+    if rects:
+        update_table(rects[-1])
+
     # 创建并排列按钮
     ok_button = tk.Button(root, text="OK", command=on_ok)
     ok_button.pack(side=tk.LEFT, padx=5, pady=5)
@@ -158,9 +201,10 @@ def show_measure_menu():
 
 
 def draw_rectangle(image, rect):
-    """在图像上绘制矩形及其控制点"""
+    """在图像上绘制矩形"""
     temp_image = image.copy()
-    cv2.rectangle(temp_image, rect[0], rect[1], (0, 255, 0), 2)
+    pt1, pt2 = rect
+    cv2.rectangle(temp_image, pt1, pt2, (0, 255, 0), 2)
     for point in control_points:
         cv2.circle(temp_image, point, 5, (0, 0, 255), -1)
     return temp_image
