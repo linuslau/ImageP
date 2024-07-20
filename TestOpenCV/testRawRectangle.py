@@ -240,8 +240,12 @@ def show_measure_menu():
         x2, y2 = rect[1]
         # 裁剪出矩形区域
         roi = image[y1:y2, x1:x2]
-        # 转换为灰度图像
-        gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        # 检查图像通道数
+        if len(roi.shape) == 3:
+            # 转换为灰度图像
+            gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        else:
+            gray_roi = roi
         # 计算统计信息
         area = gray_roi.size
         mean = np.mean(gray_roi)
