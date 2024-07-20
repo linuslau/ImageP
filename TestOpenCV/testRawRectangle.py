@@ -1,22 +1,36 @@
 import cv2
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import ttk, filedialog, messagebox
 import threading
 import numpy as np
 import ctypes
-from ctypes import wintypes
-
-
-import tkinter as tk
-from tkinter import filedialog, ttk, messagebox
-import numpy as np
-import cv2
 import time
 
+# 全局变量
+drawing = False  # 是否正在绘制
+moving = False  # 是否正在移动
+resizing = False  # 是否正在调整大小
+rect_start = None  # 矩形的起始点
+rect_end = None  # 矩形的结束点
+rects = []  # 存储矩形的列表
+click_x, click_y = None, None  # 右键点击的位置
+control_points = []  # 控制点的列表
+current_rect_index = None  # 当前正在调整大小的矩形索引
+dragging_control_point = None  # 当前正在拖动的控制点
+hovering_control_point = None  # 当前悬停的控制点
+image = None
 
-def open_raw_file(filename, image_type, width, height, offset, num_images, gap, white_is_zero, little_endian,
-                  open_all_files, use_virtual_stack):
+# Windows API 设置鼠标指针
+class Cursor:
+    ARROW = 32512
+    HAND = 32649
+
+    @staticmethod
+    def set_cursor(cursor_id):
+        ctypes.windll.user32.SetCursor(ctypes.windll.user32.LoadCursorW(0, cursor_id))
+
+
+def open_raw_file(filename, image_type, width, height, offset):
     dtype_map = {
         '8-bit': np.uint8,
         '16-bit Signed': np.int16,
@@ -115,16 +129,17 @@ def open_settings_dialog(filename):
             width = int(width_entry.get())
             height = int(height_entry.get())
             offset = int(offset_entry.get())
-            num_images = int(num_images_entry.get())
-            gap = int(gap_entry.get())
-            white_is_zero = white_is_zero_var.get()
-            little_endian = little_endian_var.get()
-            open_all_files = open_all_files_var.get()
-            use_virtual_stack = use_virtual_stack_var.get()
 
-            image = open_raw_file(filename, image_type, width, height, offset, num_images, gap, white_is_zero,
-                                little_endian, open_all_files, use_virtual_stack)
-            root.destroy()
+            image = open_raw_file(filename, image_type, width, height, offset)
+
+            # 如果图像是单通道的（灰度图像），将其转换为三通道的伪彩色图像
+            if len(image.shape) == 2:
+                image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+
+            cv2.imshow('Image with Rectangle', image)
+            cv2.setMouseCallback('Image with Rectangle', handle_mouse_event)
+
+            settings_dialog.destroy()
         except ValueError as e:
             messagebox.showerror("Input Error", f"Invalid input: {e}")
 
@@ -134,27 +149,7 @@ def open_settings_dialog(filename):
     settings_dialog_time = time.time()
     print(f"Settings dialog time: {settings_dialog_time - start_time:.2f} seconds")
 
-# 全局变量
-drawing = False  # 是否正在绘制
-moving = False  # 是否正在移动
-resizing = False  # 是否正在调整大小
-rect_start = None  # 矩形的起始点
-rect_end = None  # 矩形的结束点
-rects = []  # 存储矩形的列表
-click_x, click_y = None, None  # 右键点击的位置
-control_points = []  # 控制点的列表
-current_rect_index = None  # 当前正在调整大小的矩形索引
-dragging_control_point = None  # 当前正在拖动的控制点
-hovering_control_point = None  # 当前悬停的控制点
-
-# Windows API 设置鼠标指针
-class Cursor:
-    ARROW = 32512
-    HAND = 32649
-
-    @staticmethod
-    def set_cursor(cursor_id):
-        ctypes.windll.user32.SetCursor(ctypes.windll.user32.LoadCursorW(0, cursor_id))
+# 其余代码保持不变
 
 
 def show_rect_properties(rect):
@@ -408,7 +403,7 @@ def handle_mouse_event(event, x, y, flags, param):
         if not drawing and not moving and not resizing:
             hovering_control_point = None
             for i, point in enumerate(control_points):
-                if np.linalg.norm(np.array(point) - np.array((x, y))) <= 10:  # 增大阈值
+                if np.linalg.norm(np.array(point) - np.array((x, y))) <= 10:  # 墛大阈值
                     hovering_control_point = i
                     break
             if hovering_control_point is not None:
@@ -477,23 +472,25 @@ def handle_mouse_event(event, x, y, flags, param):
             rect_start = None
 
 
-root = tk.Tk()
-root.withdraw()
+def main():
+    root = tk.Tk()
+    root.withdraw()
+    open_file_dialog()
+    root.mainloop()
 
-open_file_dialog()
-root.mainloop()
+    if image is None:
+        raise ValueError("Failed to load image")
 
-# 读取图像
-# image = cv2.imread('boats.jpg')
-if image is None:
-    raise ValueError("Failed to load image")
+    # 显示图像窗口
+    cv2.imshow('Image with Rectangle', image)
 
-# 显示图像窗口
-cv2.imshow('Image with Rectangle', image)
+    # 设置鼠标回调函数
+    cv2.setMouseCallback('Image with Rectangle', handle_mouse_event)
 
-# 设置鼠标回调函数
-cv2.setMouseCallback('Image with Rectangle', handle_mouse_event)
+    # 等待用户按键并关闭窗口
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
-# 等待用户按键并关闭窗口
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+    main()
