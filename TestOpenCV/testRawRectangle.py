@@ -160,8 +160,6 @@ def open_settings_dialog(filename):
     settings_dialog_time = time.time()
     print(f"Settings dialog time: {settings_dialog_time - start_time:.2f} seconds")
 
-# 其余代码保持不变
-
 
 def show_rect_properties(rect):
     """弹出窗口显示矩形属性"""
@@ -364,8 +362,13 @@ def update_control_points(rect):
     ]
 
 
+def invert_image(img):
+    """反转图像颜色"""
+    return cv2.bitwise_not(img)
+
+
 def handle_mouse_event(event, x, y, flags, param):
-    global rect_start, rect_end, drawing, moving, resizing, rects, click_x, click_y, control_points, current_rect_index, dragging_control_point, hovering_control_point
+    global rect_start, rect_end, drawing, moving, resizing, rects, click_x, click_y, control_points, current_rect_index, dragging_control_point, hovering_control_point, image
 
     if event == cv2.EVENT_RBUTTONDOWN:
         click_x, click_y = x, y  # 保存右键点击的位置
@@ -380,6 +383,8 @@ def handle_mouse_event(event, x, y, flags, param):
                         menu.add_command(label="ROW Properties", command=lambda: show_rect_properties(rect))
                         menu.add_separator()
                         menu.add_command(label="Measure", command=show_measure_menu)
+                        menu.add_separator()
+                        menu.add_command(label="Invert", command=invert_image_display)
                         menu.post(root.winfo_pointerx(), root.winfo_pointery())
                         root.mainloop()
 
@@ -390,7 +395,7 @@ def handle_mouse_event(event, x, y, flags, param):
         for i, rect in enumerate(rects):
             # 检查是否在控制点上点击
             for j, point in enumerate(control_points):
-                if np.linalg.norm(np.array(point) - np.array((x, y))) <= 10:  # 增大阈值
+                if np.linalg.norm(np.array(point) - np.array((x, y))) <= 10:  # 墛大阈值
                     resizing = True
                     current_rect_index = i
                     dragging_control_point = j
@@ -481,6 +486,12 @@ def handle_mouse_event(event, x, y, flags, param):
             resizing = False
             dragging_control_point = None
             rect_start = None
+
+
+def invert_image_display():
+    global image
+    image = invert_image(image)
+    cv2.imshow('Image with Rectangle', image)
 
 
 def main():
