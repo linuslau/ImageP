@@ -19,6 +19,7 @@ current_rect_index = None  # 当前正在调整大小的矩形索引
 dragging_control_point = None  # 当前正在拖动的控制点
 hovering_control_point = None  # 当前悬停的控制点
 
+
 # Windows API 设置鼠标指针
 class Cursor:
     ARROW = 32512
@@ -28,24 +29,75 @@ class Cursor:
     def set_cursor(cursor_id):
         ctypes.windll.user32.SetCursor(ctypes.windll.user32.LoadCursorW(0, cursor_id))
 
-def show_rect_info(rect):
-    """弹出窗口显示矩形信息"""
-    root = tk.Tk()
-    root.withdraw()  # 隐藏主窗口
-    messagebox.showinfo("Rectangle Info", f"Top-left: {rect[0]}\nBottom-right: {rect[1]}")
-    root.destroy()
 
-def show_gray_value(x, y):
-    """计算并显示指定位置的灰度值"""
-    global image
-    # 转换为灰度图像
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # 获取指定位置的灰度值
-    gray_value = gray_image[y, x]
+def show_rect_properties(rect):
+    """弹出窗口显示矩形属性"""
+
+    def on_ok():
+        # 获取输入框的内容
+        name = name_entry.get()
+        position = position_entry.get()
+        group = group_entry.get()
+        stroke_color = stroke_color_entry.get()
+        width = width_entry.get()
+        fill_color = fill_color_entry.get()
+        list_coordinates = list_coordinates_var.get()
+
+        # 打印输入框的内容和复选框的状态
+        print(f"Name: {name}")
+        print(f"Position: {position}")
+        print(f"Group: {group}")
+        print(f"Stroke color: {stroke_color}")
+        print(f"Width: {width}")
+        print(f"Fill color: {fill_color}")
+        print(f"List coordinates: {list_coordinates}")
+
+        root.destroy()
+
+    def on_cancel():
+        root.destroy()
+
     root = tk.Tk()
-    root.withdraw()  # 隐藏主窗口
-    messagebox.showinfo("Gray Value", f"Gray Value at ({x}, {y}): {gray_value}")
-    root.destroy()
+    root.title("ROW Properties")
+
+    # 创建并排列标签和输入框
+    tk.Label(root, text="Name").grid(row=0, column=0, padx=5, pady=5)
+    name_entry = tk.Entry(root)
+    name_entry.grid(row=0, column=1, padx=5, pady=5)
+
+    tk.Label(root, text="Position").grid(row=1, column=0, padx=5, pady=5)
+    position_entry = tk.Entry(root)
+    position_entry.grid(row=1, column=1, padx=5, pady=5)
+
+    tk.Label(root, text="Group").grid(row=2, column=0, padx=5, pady=5)
+    group_entry = tk.Entry(root)
+    group_entry.grid(row=2, column=1, padx=5, pady=5)
+
+    tk.Label(root, text="Stroke color").grid(row=3, column=0, padx=5, pady=5)
+    stroke_color_entry = tk.Entry(root)
+    stroke_color_entry.grid(row=3, column=1, padx=5, pady=5)
+
+    tk.Label(root, text="Width").grid(row=4, column=0, padx=5, pady=5)
+    width_entry = tk.Entry(root)
+    width_entry.grid(row=4, column=1, padx=5, pady=5)
+
+    tk.Label(root, text="Fill color").grid(row=5, column=0, padx=5, pady=5)
+    fill_color_entry = tk.Entry(root)
+    fill_color_entry.grid(row=5, column=1, padx=5, pady=5)
+
+    # 创建并排列复选框
+    list_coordinates_var = tk.BooleanVar()
+    list_coordinates_checkbox = tk.Checkbutton(root, text="List coordinates (4)", variable=list_coordinates_var)
+    list_coordinates_checkbox.grid(row=6, columnspan=2, padx=5, pady=5)
+
+    # 创建并排列按钮
+    ok_button = tk.Button(root, text="OK", command=on_ok)
+    ok_button.grid(row=7, column=0, padx=5, pady=5, sticky='e')
+    cancel_button = tk.Button(root, text="Cancel", command=on_cancel)
+    cancel_button.grid(row=7, column=1, padx=5, pady=5, sticky='w')
+
+    root.mainloop()
+
 
 def draw_rectangle(image, rect):
     """在图像上绘制矩形及其控制点"""
@@ -54,6 +106,7 @@ def draw_rectangle(image, rect):
     for point in control_points:
         cv2.circle(temp_image, point, 5, (0, 0, 255), -1)
     return temp_image
+
 
 def update_control_points(rect):
     """更新控制点的位置"""
@@ -71,6 +124,7 @@ def update_control_points(rect):
         (x2, (y1 + y2) // 2)  # Right-center
     ]
 
+
 def handle_mouse_event(event, x, y, flags, param):
     global rect_start, rect_end, drawing, moving, resizing, rects, click_x, click_y, control_points, current_rect_index, dragging_control_point, hovering_control_point
 
@@ -84,8 +138,7 @@ def handle_mouse_event(event, x, y, flags, param):
                         root = tk.Tk()
                         root.withdraw()  # 隐藏主窗口
                         menu = tk.Menu(root, tearoff=0)
-                        menu.add_command(label="Show Rectangle Info", command=lambda: show_rect_info(rect))
-                        menu.add_command(label="Show Gray Value", command=lambda: show_gray_value(x, y))
+                        menu.add_command(label="ROW Properties", command=lambda: show_rect_properties(rect))
                         menu.post(root.winfo_pointerx(), root.winfo_pointery())
                         root.mainloop()
 
@@ -146,7 +199,7 @@ def handle_mouse_event(event, x, y, flags, param):
                 if i == current_rect_index:
                     rects[i] = ((rects[i][0][0] + dx, rects[i][0][1] + dy),
                                 (rects[i][1][0] + dx, rects[i][1][1] + dy))
-                    update_control_points(rects[i])  # 更新控制点位置
+                    update_control_points(rects[i])
             rect_start = (x, y)
             temp_image = draw_rectangle(image, rects[current_rect_index])
             cv2.imshow('Image with Rectangle', temp_image)
@@ -196,6 +249,7 @@ def handle_mouse_event(event, x, y, flags, param):
             resizing = False
             dragging_control_point = None
             rect_start = None
+
 
 # 读取图像
 image = cv2.imread(r'boats.jpg')
