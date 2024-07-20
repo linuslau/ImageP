@@ -146,6 +146,7 @@ def handle_mouse_event(event, x, y, flags, param):
                 if i == current_rect_index:
                     rects[i] = ((rects[i][0][0] + dx, rects[i][0][1] + dy),
                                 (rects[i][1][0] + dx, rects[i][1][1] + dy))
+                    update_control_points(rects[i])  # 更新控制点位置
             rect_start = (x, y)
             temp_image = draw_rectangle(image, rects[current_rect_index])
             cv2.imshow('Image with Rectangle', temp_image)
