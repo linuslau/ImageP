@@ -129,8 +129,13 @@ class ImageJClone(QMainWindow):
 
     def edge_detection(self):
         if self.display_image is not None:
-            self.display_image = cv2.Canny(self.display_image, 100, 200)
-            self.show_image(self.display_image)
+            try:
+                edges = cv2.Canny(self.display_image, 100, 200)
+                edges_colored = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
+                self.display_image = edges_colored
+                self.show_image(self.display_image)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error', f'Failed to perform edge detection: {e}')
         else:
             QMessageBox.warning(self, 'Error', 'No image for edge detection')
 
