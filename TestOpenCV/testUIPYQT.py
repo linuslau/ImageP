@@ -143,22 +143,23 @@ class ImageJClone(QMainWindow):
         QMessageBox.information(self, 'About', 'ImageJ Clone\nCreated with Python and PyQt')
 
     def eventFilter(self, source, event):
-        if event.type() == event.MouseButtonPress:
-            if event.button() == Qt.LeftButton:
-                self.drawing = True
-                self.start_point = event.pos()
-                self.end_point = event.pos()
-            elif event.button() == Qt.RightButton:
-                self.show_context_menu(event)
-        elif event.type() == event.MouseMove:
-            if self.drawing:
-                self.end_point = event.pos()
-                self.update()
-        elif event.type() == event.MouseButtonRelease:
-            if event.button() == Qt.LeftButton:
-                self.drawing = False
-                self.end_point = event.pos()
-                self.update()
+        if source == self.image_label:
+            if event.type() == event.MouseButtonPress:
+                if event.button() == Qt.LeftButton:
+                    self.drawing = True
+                    self.start_point = event.pos()
+                    self.end_point = event.pos()
+                elif event.button() == Qt.RightButton:
+                    self.show_context_menu(event)
+            elif event.type() == event.MouseMove:
+                if self.drawing:
+                    self.end_point = event.pos()
+                    self.update()
+            elif event.type() == event.MouseButtonRelease:
+                if event.button() == Qt.LeftButton:
+                    self.drawing = False
+                    self.end_point = event.pos()
+                    self.update()
         return super().eventFilter(source, event)
 
     def show_context_menu(self, event):
@@ -171,14 +172,14 @@ class ImageJClone(QMainWindow):
 
     def paintEvent(self, event):
         if self.display_image is not None:
-            super().paintEvent(event)
-            painter = QPainter(self)
+            painter = QPainter(self.image_label.pixmap())
             pen = QPen(Qt.green, 2, Qt.SolidLine)
             painter.setPen(pen)
             if self.drawing:
                 painter.drawRect(self.start_point.x(), self.start_point.y(),
                                  self.end_point.x() - self.start_point.x(),
                                  self.end_point.y() - self.start_point.y())
+            self.image_label.update()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
