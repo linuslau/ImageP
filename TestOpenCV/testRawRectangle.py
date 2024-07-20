@@ -5,6 +5,7 @@ import threading
 import numpy as np
 import ctypes
 import time
+import os
 
 # 全局变量
 drawing = False  # 是否正在绘制
@@ -62,7 +63,17 @@ def open_file_dialog():
     print(f"File dialog time: {file_dialog_time - start_time:.2f} seconds")
 
     if filename:
-        open_settings_dialog(filename)
+        file_ext = os.path.splitext(filename)[1].lower()
+        if file_ext == '.raw':
+            open_settings_dialog(filename)
+        else:
+            global image
+            image = cv2.imread(filename)
+            if image is None:
+                messagebox.showerror("Error", "Failed to load image")
+                return
+            cv2.imshow('Image with Rectangle', image)
+            cv2.setMouseCallback('Image with Rectangle', handle_mouse_event)
 
 
 def open_settings_dialog(filename):
