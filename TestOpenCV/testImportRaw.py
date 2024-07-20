@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, ttk, messagebox
 import numpy as np
 import cv2
+import time
 
 
 def open_raw_file(filename, image_type, width, height, offset, num_images, gap, white_is_zero, little_endian,
@@ -30,13 +31,18 @@ def open_raw_file(filename, image_type, width, height, offset, num_images, gap, 
 
 
 def open_file_dialog():
+    start_time = time.time()
     filename = filedialog.askopenfilename(title="Select RAW file",
                                           filetypes=[("RAW files", "*.raw"), ("All files", "*.*")])
+    file_dialog_time = time.time()
+    print(f"File dialog time: {file_dialog_time - start_time:.2f} seconds")
+
     if filename:
         open_settings_dialog(filename)
 
 
 def open_settings_dialog(filename):
+    start_time = time.time()
     settings_dialog = tk.Toplevel()
     settings_dialog.title("Import RAW...")
 
@@ -116,6 +122,9 @@ def open_settings_dialog(filename):
 
     tk.Button(settings_dialog, text="OK", command=on_ok).grid(row=10, column=0, sticky="e")
     tk.Button(settings_dialog, text="Cancel", command=settings_dialog.destroy).grid(row=10, column=1, sticky="w")
+
+    settings_dialog_time = time.time()
+    print(f"Settings dialog time: {settings_dialog_time - start_time:.2f} seconds")
 
 
 root = tk.Tk()
