@@ -1,7 +1,7 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog
-from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QLabel, QMessageBox, QInputDialog, QMenu
+from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen
+from PyQt5.QtCore import Qt, QPoint
 import cv2
 import numpy as np
 
@@ -18,6 +18,9 @@ class ImageJClone(QMainWindow):
         self.image_path = None
         self.original_image = None
         self.display_image = None
+        self.drawing = False
+        self.start_point = QPoint()
+        self.end_point = QPoint()
 
         self.initUI()
 
@@ -29,6 +32,8 @@ class ImageJClone(QMainWindow):
 
         self.image_label = QLabel(self)
         self.image_label.setAlignment(Qt.AlignCenter)
+        self.image_label.setMouseTracking(True)
+        self.image_label.installEventFilter(self)
         self.setCentralWidget(self.image_label)
 
     def create_menu(self):
@@ -131,6 +136,44 @@ class ImageJClone(QMainWindow):
 
     def show_about(self):
         QMessageBox.information(self, 'About', 'ImageJ Clone\nCreated with Python and PyQt')
+
+    def eventFilter(self, source, event):
+        if event.type() == event.MouseButtonPress:
+            if event.button() == Qt.LeftButton:
+                self.drawing = True
+                self.start_point = event.pos()
+                self.end_point = event.pos()
+            elif event.button() == Qt.RightButton:
+                self.show_context_menu(event)
+        elif event.type() == event.MouseMove:
+            if self.drawing:
+                self.end_point = event.pos()
+                self.update()
+        elif event.type() == event.MouseButtonRelease:
+            if event.button() == Qt.LeftButton:
+                self.drawing = False
+                self.end_point = event.pos()
+                self.update()
+        return super().eventFilter(source, event)
+
+    def show_context_menu(self, event):
+        context_menu = QMenu(self)
+        context_menu.addAction(QAction('Rotate', self, triggered=self.rotate_image))
+        context_menu.addAction(QAction('Resize', self, triggered=self.resize_image))
+        context_menu.addAction(QAction('Blur', self, triggered=self.blur_image))
+        context_menu.addAction(QAction('Edge Detection', self, triggered=self.edge_detection))
+        context_menu.exec_(self.mapToGlobal(event.pos()))
+
+    def paintEvent(self, event):
+        if self.display_image is not None:
+            super().paintEvent(event)
+            painter = QPainter(self)
+            pen = QPen(Qt.green, 2, Qt.SolidLine)
+            painter.setPen(pen)
+            if self.drawing:
+                painter.drawRect(self.start_point.x(), self.start_point.y(),
+                                 self.end_point.x() - self.start_point.x(),
+                                 self.end_point.y() - self.start_point.y())
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
