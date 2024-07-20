@@ -19,7 +19,6 @@ current_rect_index = None  # 当前正在调整大小的矩形索引
 dragging_control_point = None  # 当前正在拖动的控制点
 hovering_control_point = None  # 当前悬停的控制点
 
-
 # Windows API 设置鼠标指针
 class Cursor:
     ARROW = 32512
@@ -99,6 +98,65 @@ def show_rect_properties(rect):
     root.mainloop()
 
 
+def show_measure_menu():
+    """弹出窗口显示 Measure 菜单"""
+    def on_ok():
+        root.destroy()
+
+    def on_cancel():
+        root.destroy()
+
+    root = tk.Tk()
+    root.title("Measure")
+
+    # 创建菜单栏
+    menu_bar = tk.Menu(root)
+
+    # File 菜单
+    file_menu = tk.Menu(menu_bar, tearoff=0)
+    file_menu.add_command(label="New", command=lambda: print("New"))
+    file_menu.add_command(label="Open", command=lambda: print("Open"))
+    file_menu.add_separator()
+    file_menu.add_command(label="Save", command=lambda: print("Save"))
+    file_menu.add_command(label="Save As...", command=lambda: print("Save As"))
+    menu_bar.add_cascade(label="File", menu=file_menu)
+
+    # Edit 菜单
+    edit_menu = tk.Menu(menu_bar, tearoff=0)
+    edit_menu.add_command(label="Undo", command=lambda: print("Undo"))
+    edit_menu.add_command(label="Redo", command=lambda: print("Redo"))
+    edit_menu.add_separator()
+    edit_menu.add_command(label="Cut", command=lambda: print("Cut"))
+    edit_menu.add_command(label="Copy", command=lambda: print("Copy"))
+    edit_menu.add_command(label="Paste", command=lambda: print("Paste"))
+    menu_bar.add_cascade(label="Edit", menu=edit_menu)
+
+    # Font 菜单
+    font_menu = tk.Menu(menu_bar, tearoff=0)
+    font_menu.add_command(label="Bold", command=lambda: print("Bold"))
+    font_menu.add_command(label="Italic", command=lambda: print("Italic"))
+    font_menu.add_separator()
+    font_menu.add_command(label="Underline", command=lambda: print("Underline"))
+    menu_bar.add_cascade(label="Font", menu=font_menu)
+
+    # Results 菜单
+    results_menu = tk.Menu(menu_bar, tearoff=0)
+    results_menu.add_command(label="Summary", command=lambda: print("Summary"))
+    results_menu.add_command(label="Details", command=lambda: print("Details"))
+    menu_bar.add_cascade(label="Results", menu=results_menu)
+
+    # 显示菜单栏
+    root.config(menu=menu_bar)
+
+    # 创建并排列按钮
+    ok_button = tk.Button(root, text="OK", command=on_ok)
+    ok_button.pack(side=tk.LEFT, padx=5, pady=5)
+    cancel_button = tk.Button(root, text="Cancel", command=on_cancel)
+    cancel_button.pack(side=tk.RIGHT, padx=5, pady=5)
+
+    root.mainloop()
+
+
 def draw_rectangle(image, rect):
     """在图像上绘制矩形及其控制点"""
     temp_image = image.copy()
@@ -139,43 +197,37 @@ def handle_mouse_event(event, x, y, flags, param):
                         root.withdraw()  # 隐藏主窗口
                         menu = tk.Menu(root, tearoff=0)
                         menu.add_command(label="ROW Properties", command=lambda: show_rect_properties(rect))
+                        menu.add_separator()
+                        menu.add_command(label="Measure", command=show_measure_menu)
                         menu.post(root.winfo_pointerx(), root.winfo_pointery())
                         root.mainloop()
 
                     # 使用主线程显示菜单
-                    root_thread = threading.Thread(target=show_menu)
-                    root_thread.start()
-                    return
-
+                    threading.Thread(target=show_menu).start()
+                    break
     elif event == cv2.EVENT_LBUTTONDOWN:
-        if not drawing and not moving and not resizing:
-            # 检查是否点击在现有矩形上
-            for i, rect in enumerate(rects):
-                if (rect[0][0] <= x <= rect[1][0] and rect[0][1] <= y <= rect[1][1]):
-                    # 检查是否点击在控制点上
-                    for j, point in enumerate(control_points):
-                        if np.linalg.norm(np.array(point) - np.array((x, y))) <= 10:  # 增大阈值
-                            resizing = True
-                            current_rect_index = i
-                            dragging_control_point = j
-                            rect_start = (x, y)
-                            return
-                    moving = True
+        for i, rect in enumerate(rects):
+            # 检查是否在控制点上点击
+            for j, point in enumerate(control_points):
+                if np.linalg.norm(np.array(point) - np.array((x, y))) <= 10:  # 增大阈值
+                    resizing = True
                     current_rect_index = i
+                    dragging_control_point = j
                     rect_start = (x, y)
                     return
-            # 取消之前的矩形
-            rects = []
-            control_points = []
-            # 开始绘制新矩形
-            drawing = True
-            rect_start = (x, y)
-            rect_end = (x, y)
-        elif drawing:
-            # 更新矩形的结束点
-            rect_end = (x, y)
-            temp_image = draw_rectangle(image, (rect_start, rect_end))
-            cv2.imshow('Image with Rectangle', temp_image)
+            # 检查是否在矩形内部点击
+            if rect[0][0] <= x <= rect[1][0] and rect[0][1] <= y <= rect[1][1]:
+                moving = True
+                current_rect_index = i
+                rect_start = (x, y)
+                return
+        # 取消之前的矩形
+        rects = []
+        control_points = []
+        # 开始绘制新矩形
+        drawing = True
+        rect_start = (x, y)
+        rect_end = (x, y)
     elif event == cv2.EVENT_MOUSEMOVE:
         # 检查是否在控制点上
         if not drawing and not moving and not resizing:
@@ -190,17 +242,16 @@ def handle_mouse_event(event, x, y, flags, param):
                 Cursor.set_cursor(Cursor.ARROW)
         if drawing:
             # 实时显示矩形
-            temp_image = draw_rectangle(image, (rect_start, (x, y)))
+            rect_end = (x, y)
+            temp_image = draw_rectangle(image, (rect_start, rect_end))
             cv2.imshow('Image with Rectangle', temp_image)
         elif moving and current_rect_index is not None:
             # 移动矩形
             dx, dy = x - rect_start[0], y - rect_start[1]
-            for i in range(len(rects)):
-                if i == current_rect_index:
-                    rects[i] = ((rects[i][0][0] + dx, rects[i][0][1] + dy),
-                                (rects[i][1][0] + dx, rects[i][1][1] + dy))
-                    update_control_points(rects[i])
             rect_start = (x, y)
+            rects[current_rect_index] = ((rects[current_rect_index][0][0] + dx, rects[current_rect_index][0][1] + dy),
+                                         (rects[current_rect_index][1][0] + dx, rects[current_rect_index][1][1] + dy))
+            update_control_points(rects[current_rect_index])
             temp_image = draw_rectangle(image, rects[current_rect_index])
             cv2.imshow('Image with Rectangle', temp_image)
         elif resizing and current_rect_index is not None and dragging_control_point is not None:
@@ -252,7 +303,7 @@ def handle_mouse_event(event, x, y, flags, param):
 
 
 # 读取图像
-image = cv2.imread(r'boats.jpg')
+image = cv2.imread('boats.jpg')
 if image is None:
     raise ValueError("Failed to load image")
 
