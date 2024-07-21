@@ -26,6 +26,7 @@ class CustomViewBox(pg.ViewBox):
         self.rect_initial = None
         self.image_data = None
         self.image_item = None
+        self.handles = []
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -54,8 +55,7 @@ class CustomViewBox(pg.ViewBox):
                 self.start_pos = view_pos
                 self.dragging = True
             else:
-                self.removeItem(self.rect_item)
-                self.rect_item = None
+                self.clearOldRect()
                 self.start_pos = self.mapToView(pos)
                 self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
                 self.rect_item.setPen(pg.mkPen(color='r', width=2))
@@ -232,6 +232,14 @@ class CustomViewBox(pg.ViewBox):
         for handle, pos in zip(self.handles, handle_positions):
             handle.setPos(pos)
 
+    def clearOldRect(self):
+        """Remove the old rectangle and its handles."""
+        if self.rect_item is not None:
+            self.removeItem(self.rect_item)
+            self.rect_item = None
+        for handle in self.handles:
+            self.removeItem(handle)
+        self.handles = []
 
 class ImageWithRect(pg.GraphicsLayoutWidget):
     def __init__(self):
