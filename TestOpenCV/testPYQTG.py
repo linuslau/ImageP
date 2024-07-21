@@ -203,6 +203,9 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
 
         self.plot_item.addItem(self.img)
 
+        # 设置窗口初始大小
+        self.resize(1600, 1200)
+
     def load_raw_image(self, file_path, shape):
         # 读取raw图像文件
         image = np.fromfile(file_path, dtype=np.uint8)
