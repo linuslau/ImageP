@@ -14,6 +14,10 @@ class CustomViewBox(pg.ViewBox):
         self.resizing = False
         self.resize_start_pos = None
         self.rect_initial = None
+        self.image_data = None
+
+    def setImageData(self, image_data):
+        self.image_data = image_data
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.RightButton and self.rect_item is not None:
@@ -39,6 +43,7 @@ class CustomViewBox(pg.ViewBox):
                 self.dragging = True
             else:
                 self.removeItem(self.rect_item)
+                self.rect_item = None
                 self.start_pos = self.mapToView(pos)
                 self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
                 self.rect_item.setPen(pg.mkPen(color='r', width=2))
@@ -94,6 +99,10 @@ class CustomViewBox(pg.ViewBox):
         menu = QtWidgets.QMenu()
         row_properties_action = menu.addAction("ROW Properties")
         row_properties_action.triggered.connect(self.showRowPropertiesDialog)
+
+        measure_action = menu.addAction("Measure")
+        measure_action.triggered.connect(self.showMeasureDialog)
+
         menu.exec_(event.screenPos())
 
     def showRowPropertiesDialog(self):
@@ -124,6 +133,41 @@ class CustomViewBox(pg.ViewBox):
         else:
             print("Cancelled")
 
+    def showMeasureDialog(self):
+        if self.image_data is None or self.rect_item is None:
+            return
+
+        rect = self.rect_item.rect()
+        x1, y1 = int(rect.left()), int(rect.top())
+        x2, y2 = int(rect.right()), int(rect.bottom())
+
+        x1, x2 = max(0, x1), min(self.image_data.shape[1], x2)
+        y1, y2 = max(0, y1), min(self.image_data.shape[0], y2)
+
+        region = self.image_data[y1:y2, x1:x2]
+        area = region.size
+        mean_val = np.mean(region)
+        min_val = np.min(region)
+        max_val = np.max(region)
+
+        dialog = QtWidgets.QDialog()
+        dialog.setWindowTitle("Measure")
+
+        layout = QtWidgets.QFormLayout()
+
+        layout.addRow(QtWidgets.QLabel("Area:"), QtWidgets.QLabel(str(area)))
+        layout.addRow(QtWidgets.QLabel("Mean:"), QtWidgets.QLabel(str(mean_val)))
+        layout.addRow(QtWidgets.QLabel("Min:"), QtWidgets.QLabel(str(min_val)))
+        layout.addRow(QtWidgets.QLabel("Max:"), QtWidgets.QLabel(str(max_val)))
+
+        buttons = QtWidgets.QDialogButtonBox.Ok
+        button_box = QtWidgets.QDialogButtonBox(buttons)
+        button_box.accepted.connect(dialog.accept)
+
+        layout.addRow(button_box)
+        dialog.setLayout(layout)
+        dialog.exec_()
+
 
 class ImageWithRect(pg.GraphicsLayoutWidget):
     def __init__(self):
@@ -142,6 +186,8 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
 
         # 旋转图像数组90度，纠正方向
         image = np.rot90(image, k=3)  # 旋转270度，相当于顺时针旋转90度
+
+        self.view.setImageData(image)  # 设置图像数据，以便进行测量
 
         self.img = pg.ImageItem(image)
         self.plot_item.addItem(self.img)
