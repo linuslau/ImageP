@@ -3,6 +3,7 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import numpy as np
 from PIL import Image
 
+
 class CustomViewBox(pg.ViewBox):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -20,10 +21,16 @@ class CustomViewBox(pg.ViewBox):
 
         if self.rect_item is not None:
             rect = self.rect_item.rect()
-            if rect.contains(view_pos):
+            if self.isNearEdge(view_pos, rect):
+                self.start_pos = view_pos
+                self.resizing = True
+                self.rect_initial = rect
+                self.resize_start_pos = self.start_pos
+            elif rect.contains(view_pos):
                 self.start_pos = view_pos
                 self.dragging = True
             else:
+                self.removeItem(self.rect_item)
                 self.start_pos = self.mapToView(pos)
                 self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
                 self.rect_item.setPen(pg.mkPen(color='r', width=2))
@@ -47,6 +54,12 @@ class CustomViewBox(pg.ViewBox):
                 rect.moveTopLeft(QtCore.QPointF(rect.left() + dx, rect.top() + dy))
                 self.rect_item.setRect(rect)
                 self.start_pos = current_pos
+            elif self.resizing:
+                dx = current_pos.x() - self.resize_start_pos.x()
+                dy = current_pos.y() - self.resize_start_pos.y()
+                new_rect = QtCore.QRectF(self.rect_initial)
+                new_rect.setBottomRight(QtCore.QPointF(new_rect.right() + dx, new_rect.bottom() + dy))
+                self.rect_item.setRect(new_rect)
             else:
                 rect = QtCore.QRectF(self.start_pos, current_pos).normalized()
                 self.rect_item.setRect(rect)
@@ -56,7 +69,19 @@ class CustomViewBox(pg.ViewBox):
         self.start_pos = None
         self.dragging = False
         self.resizing = False
+        self.rect_initial = None
+        self.resize_start_pos = None
         event.accept()
+
+    def isNearEdge(self, pos, rect):
+        edge_tolerance = 10
+        near_left = abs(pos.x() - rect.left()) < edge_tolerance
+        near_right = abs(pos.x() - rect.right()) < edge_tolerance
+        near_top = abs(pos.y() - rect.top()) < edge_tolerance
+        near_bottom = abs(pos.y() - rect.bottom()) < edge_tolerance
+
+        return near_left or near_right or near_top or near_bottom
+
 
 class ImageWithRect(pg.GraphicsLayoutWidget):
     def __init__(self):
