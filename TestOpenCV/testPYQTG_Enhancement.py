@@ -7,9 +7,9 @@ over the user interface.
 """
 
 import numpy as np
-
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui
+from PIL import Image
 
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
@@ -56,25 +56,24 @@ p2.setMaximumHeight(250)
 win.resize(800, 800)
 win.show()
 
+# Load image data from file
+image_path = 'boats.jpg'
+image = Image.open(image_path)
+data = np.array(image)
 
-# Generate image data
-data = np.random.normal(size=(200, 100))
-data[20:80, 20:80] += 2.
-data = pg.gaussianFilter(data, (3, 3))
-data += np.random.normal(size=(200, 100)) * 0.1
+# Flip the image data if it's upside down
+data = np.flipud(data)
+
+# Set image data
 img.setImage(data)
 hist.setLevels(data.min(), data.max())
 
-# build isocurves from smoothed data
-iso.setData(pg.gaussianFilter(data, (2, 2)))
-
-# set position and scale of image
+# Set position and scale of image
 tr = QtGui.QTransform()
-img.setTransform(tr.scale(0.2, 0.2).translate(-50, 0))
+img.setTransform(tr.scale(1, 1).translate(0, 0))
 
-# zoom to fit imageo
+# Zoom to fit image
 p1.autoRange()
-
 
 # Callbacks for handling user interaction
 def updatePlot():
@@ -92,8 +91,7 @@ def updateIsocurve():
 isoLine.sigDragged.connect(updateIsocurve)
 
 def imageHoverEvent(event):
-    """Show the position, pixel, and value under the mouse cursor.
-    """
+    """Show the position, pixel, and value under the mouse cursor."""
     if event.isExit():
         p1.setTitle("")
         return
