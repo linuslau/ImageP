@@ -15,9 +15,11 @@ class CustomViewBox(pg.ViewBox):
         self.resize_start_pos = None
         self.rect_initial = None
         self.image_data = None
+        self.image_item = None
 
-    def setImageData(self, image_data):
+    def setImageData(self, image_data, image_item):
         self.image_data = image_data
+        self.image_item = image_item
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.RightButton and self.rect_item is not None:
@@ -103,6 +105,9 @@ class CustomViewBox(pg.ViewBox):
         measure_action = menu.addAction("Measure")
         measure_action.triggered.connect(self.showMeasureDialog)
 
+        invert_action = menu.addAction("Invert")
+        invert_action.triggered.connect(self.invertImage)
+
         menu.exec_(event.screenPos())
 
     def showRowPropertiesDialog(self):
@@ -168,6 +173,12 @@ class CustomViewBox(pg.ViewBox):
         dialog.setLayout(layout)
         dialog.exec_()
 
+    def invertImage(self):
+        if self.image_data is not None:
+            inverted_image = 255 - self.image_data  # 简单地取反处理，假设是灰度图像
+            self.image_data = inverted_image
+            self.image_item.setImage(inverted_image)
+
 
 class ImageWithRect(pg.GraphicsLayoutWidget):
     def __init__(self):
@@ -187,9 +198,9 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
         # 旋转图像数组90度，纠正方向
         image = np.rot90(image, k=3)  # 旋转270度，相当于顺时针旋转90度
 
-        self.view.setImageData(image)  # 设置图像数据，以便进行测量
-
         self.img = pg.ImageItem(image)
+        self.view.setImageData(image, self.img)  # 设置图像数据，以便进行测量
+
         self.plot_item.addItem(self.img)
 
     def load_raw_image(self, file_path, shape):
