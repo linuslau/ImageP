@@ -1,7 +1,7 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QLabel, QMessageBox, QVBoxLayout, QWidget
-from PyQt5.QtGui import QImage, QPixmap
-import pyqtgraph as pg
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QVBoxLayout, QWidget, QGraphicsView, QGraphicsScene, QGraphicsRectItem, QMessageBox
+from PyQt5.QtGui import QImage, QPixmap, QPen
+from PyQt5.QtCore import Qt, QRectF, QPointF
 import numpy as np
 import cv2
 
@@ -16,6 +16,12 @@ class ImageJClone(QMainWindow):
         self.original_image = None
         self.display_image = None
 
+        self.drawing = False
+        self.start_point = QPointF()
+        self.end_point = QPointF()
+        self.rect_item = None
+        self.rects = []
+
         self.initUI()
 
     def initUI(self):
@@ -26,17 +32,14 @@ class ImageJClone(QMainWindow):
         self.layout = QVBoxLayout()
         self.main_widget.setLayout(self.layout)
 
-        # Create a GraphicsView
-        self.graphics_view = pg.GraphicsView()
+        # Create a GraphicsView and GraphicsScene
+        self.graphics_view = QGraphicsView()
+        self.scene = QGraphicsScene()
+        self.graphics_view.setScene(self.scene)
         self.layout.addWidget(self.graphics_view)
 
-        # Create a ViewBox
-        self.view_box = pg.ViewBox()
-        self.graphics_view.setCentralItem(self.view_box)
-
-        # Create an ImageItem
-        self.image_item = pg.ImageItem()
-        self.view_box.addItem(self.image_item)
+        # Install event filter
+        self.graphics_view.viewport().installEventFilter(self)
 
     def create_menu(self):
         main_menu = self.menuBar()
@@ -78,31 +81,49 @@ class ImageJClone(QMainWindow):
 
     def show_image(self, image):
         if image is not None:
-            if len(image.shape) == 2:
-                image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-            elif image.shape[2] == 4:
-                image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGB)
-            else:
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            self.image_item.setImage(np.rot90(image, 3), levels=(0, 255))
-            self.view_box.autoRange()
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            height, width, channel = image.shape
+            bytes_per_line = 3 * width
+            q_image = QImage(image.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            pixmap = QPixmap.fromImage(q_image)
+            self.scene.clear()
+            self.scene.addPixmap(pixmap)
+            self.graphics_view.setScene(self.scene)
+            self.redraw_rectangles()
+
+    def redraw_rectangles(self):
+        for rect in self.rects:
+            rect_item = QGraphicsRectItem(QRectF(rect[0], rect[1]))
+            rect_item.setPen(QPen(Qt.green, 2))
+            self.scene.addItem(rect_item)
 
     def show_about(self):
-        self.show_message("About", "ImageJ Clone\nCreated with Python and PyQtGraph")
-
-    def show_message(self, title, message):
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Information)
-        msg.setText(message)
-        msg.setWindowTitle(title)
-        msg.exec_()
+        QMessageBox.information(self, "About", "ImageJ Clone\nCreated with Python and PyQt5")
 
     def show_warning(self, message):
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Warning)
-        msg.setText(message)
-        msg.setWindowTitle("Warning")
-        msg.exec_()
+        QMessageBox.warning(self, "Warning", message)
+
+    def eventFilter(self, source, event):
+        if source == self.graphics_view.viewport():
+            if event.type() == event.MouseButtonPress and event.button() == Qt.LeftButton:
+                self.drawing = True
+                self.start_point = self.graphics_view.mapToScene(event.pos())
+                if self.rect_item:
+                    self.scene.removeItem(self.rect_item)
+                self.rect_item = QGraphicsRectItem(QRectF(self.start_point, self.start_point))
+                self.rect_item.setPen(QPen(Qt.green, 2))
+                self.scene.addItem(self.rect_item)
+            elif event.type() == event.MouseMove and self.drawing:
+                self.end_point = self.graphics_view.mapToScene(event.pos())
+                rect = QRectF(self.start_point, self.end_point)
+                self.rect_item.setRect(rect)
+            elif event.type() == event.MouseButtonRelease and event.button() == Qt.LeftButton:
+                self.drawing = False
+                self.end_point = self.graphics_view.mapToScene(event.pos())
+                rect = QRectF(self.start_point, self.end_point)
+                self.rect_item.setRect(rect)
+                self.rects.append((self.start_point, self.end_point))
+        return super().eventFilter(source, event)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
