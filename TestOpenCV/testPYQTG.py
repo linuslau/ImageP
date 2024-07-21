@@ -16,6 +16,14 @@ class CustomViewBox(pg.ViewBox):
         self.rect_initial = None
 
     def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.RightButton and self.rect_item is not None:
+            pos = event.pos()
+            view_pos = self.mapToView(pos)
+            rect = self.rect_item.rect()
+            if rect.contains(view_pos):
+                self.showContextMenu(event)
+                return
+
         pos = event.pos()
         view_pos = self.mapToView(pos)
 
@@ -81,6 +89,40 @@ class CustomViewBox(pg.ViewBox):
         near_bottom = abs(pos.y() - rect.bottom()) < edge_tolerance
 
         return near_left or near_right or near_top or near_bottom
+
+    def showContextMenu(self, event):
+        menu = QtWidgets.QMenu()
+        row_properties_action = menu.addAction("ROW Properties")
+        row_properties_action.triggered.connect(self.showRowPropertiesDialog)
+        menu.exec_(event.screenPos())
+
+    def showRowPropertiesDialog(self):
+        dialog = QtWidgets.QDialog()
+        dialog.setWindowTitle("ROW Properties")
+
+        layout = QtWidgets.QFormLayout()
+
+        labels = ["Property 1", "Property 2", "Property 3", "Property 4", "Property 5"]
+        self.inputs = []
+
+        for label in labels:
+            input_field = QtWidgets.QLineEdit()
+            layout.addRow(QtWidgets.QLabel(label), input_field)
+            self.inputs.append(input_field)
+
+        buttons = QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        button_box = QtWidgets.QDialogButtonBox(buttons)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+
+        layout.addRow(button_box)
+        dialog.setLayout(layout)
+
+        if dialog.exec_():
+            values = [input_field.text() for input_field in self.inputs]
+            print("Accepted with values:", values)
+        else:
+            print("Cancelled")
 
 
 class ImageWithRect(pg.GraphicsLayoutWidget):
