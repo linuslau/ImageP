@@ -60,11 +60,13 @@ class CustomViewBox(pg.ViewBox):
                 self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
                 self.rect_item.setPen(pg.mkPen(color='r', width=2))
                 self.addItem(self.rect_item)
+                self.createHandles(self.rect_item)
         else:
             self.start_pos = self.mapToView(pos)
             self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
             self.rect_item.setPen(pg.mkPen(color='r', width=2))
             self.addItem(self.rect_item)
+            self.createHandles(self.rect_item)
 
         event.accept()
 
@@ -88,6 +90,7 @@ class CustomViewBox(pg.ViewBox):
             else:
                 rect = QtCore.QRectF(self.start_pos, current_pos).normalized()
                 self.rect_item.setRect(rect)
+            self.updateHandles(self.rect_item)
         event.accept()
 
     def mouseReleaseEvent(self, event):
@@ -188,6 +191,46 @@ class CustomViewBox(pg.ViewBox):
             inverted_image = 255 - self.image_data  # 简单地取反处理，假设是灰度图像
             self.image_data = inverted_image
             self.image_item.setImage(inverted_image)
+
+    def createHandles(self, rect_item):
+        """Create handles at the corners and edges of the rectangle."""
+        self.handles = []
+        rect = rect_item.rect()
+        handle_positions = [
+            rect.topLeft(),
+            rect.topRight(),
+            rect.bottomLeft(),
+            rect.bottomRight(),
+            rect.topLeft() + QtCore.QPointF(rect.width()/2, 0),
+            rect.topRight() + QtCore.QPointF(0, rect.height()/2),
+            rect.bottomLeft() + QtCore.QPointF(rect.width()/2, 0),
+            rect.bottomRight() + QtCore.QPointF(-rect.width()/2, 0)
+        ]
+
+        for pos in handle_positions:
+            handle = QtWidgets.QGraphicsEllipseItem(-3, -3, 6, 6)
+            handle.setPen(pg.mkPen(None))
+            handle.setBrush(pg.mkBrush('b'))
+            handle.setPos(pos)
+            self.handles.append(handle)
+            self.addItem(handle)
+
+    def updateHandles(self, rect_item):
+        """Update handle positions when the rectangle is resized or moved."""
+        rect = rect_item.rect()
+        handle_positions = [
+            rect.topLeft(),
+            rect.topRight(),
+            rect.bottomLeft(),
+            rect.bottomRight(),
+            rect.topLeft() + QtCore.QPointF(rect.width()/2, 0),
+            rect.topRight() + QtCore.QPointF(0, rect.height()/2),
+            rect.bottomLeft() + QtCore.QPointF(rect.width()/2, 0),
+            rect.bottomRight() + QtCore.QPointF(-rect.width()/2, 0)
+        ]
+
+        for handle, pos in zip(self.handles, handle_positions):
+            handle.setPos(pos)
 
 
 class ImageWithRect(pg.GraphicsLayoutWidget):
