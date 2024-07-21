@@ -1,6 +1,7 @@
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import numpy as np
+from PIL import Image
 
 
 class CustomViewBox(pg.ViewBox):
@@ -45,9 +46,15 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
         self.plot_item = pg.PlotItem(viewBox=self.view)
         self.addItem(self.plot_item)
 
-        # 读取并显示图像
-        self.image = np.random.rand(100, 100) * 255  # 这里用随机数据模拟图片，可以替换为你自己的图片数据
-        self.img = pg.ImageItem(self.image)
+        # 读取并显示指定图像
+        image_path = 'boats.jpg'  # 替换为你的图像路径
+        image = Image.open(image_path)
+        image = np.array(image)
+
+        # 旋转图像数组90度
+        image = np.rot90(image, k=3)  # 旋转270度，相当于顺时针旋转90度
+
+        self.img = pg.ImageItem(image)
         self.plot_item.addItem(self.img)
 
 
