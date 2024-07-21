@@ -137,15 +137,20 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
         self.addItem(self.plot_item)
 
         # 读取并显示指定图像
-        image_path = 'boats.jpg'  # 替换为你的图像路径
-        image = Image.open(image_path)
-        image = np.array(image)
+        image_path = 'boats_720x576_8bits.raw'  # 替换为你的图像路径
+        image = self.load_raw_image(image_path, (576, 720))
 
-        # 旋转图像数组90度
+        # 旋转图像数组90度，纠正方向
         image = np.rot90(image, k=3)  # 旋转270度，相当于顺时针旋转90度
 
         self.img = pg.ImageItem(image)
         self.plot_item.addItem(self.img)
+
+    def load_raw_image(self, file_path, shape):
+        # 读取raw图像文件
+        image = np.fromfile(file_path, dtype=np.uint8)
+        image = image.reshape(shape)
+        return image
 
 
 # 创建一个应用程序实例
