@@ -3,37 +3,60 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import numpy as np
 from PIL import Image
 
-
 class CustomViewBox(pg.ViewBox):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setMouseMode(self.RectMode)
         self.start_pos = None
         self.rect_item = None
+        self.dragging = False
+        self.resizing = False
+        self.resize_start_pos = None
+        self.rect_initial = None
 
     def mousePressEvent(self, event):
         pos = event.pos()
-        if self.rect_item is not None:
-            self.removeItem(self.rect_item)
-            self.rect_item = None
+        view_pos = self.mapToView(pos)
 
-        self.start_pos = self.mapToView(pos)
-        self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
-        self.rect_item.setPen(pg.mkPen(color='r', width=2))
-        self.addItem(self.rect_item)
+        if self.rect_item is not None:
+            rect = self.rect_item.rect()
+            if rect.contains(view_pos):
+                self.start_pos = view_pos
+                self.dragging = True
+            else:
+                self.start_pos = self.mapToView(pos)
+                self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
+                self.rect_item.setPen(pg.mkPen(color='r', width=2))
+                self.addItem(self.rect_item)
+        else:
+            self.start_pos = self.mapToView(pos)
+            self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
+            self.rect_item.setPen(pg.mkPen(color='r', width=2))
+            self.addItem(self.rect_item)
+
         event.accept()
 
     def mouseMoveEvent(self, event):
         if self.rect_item is not None and self.start_pos is not None:
             current_pos = self.mapToView(event.pos())
-            rect = QtCore.QRectF(self.start_pos, current_pos).normalized()
-            self.rect_item.setRect(rect)
+
+            if self.dragging:
+                dx = current_pos.x() - self.start_pos.x()
+                dy = current_pos.y() - self.start_pos.y()
+                rect = self.rect_item.rect()
+                rect.moveTopLeft(QtCore.QPointF(rect.left() + dx, rect.top() + dy))
+                self.rect_item.setRect(rect)
+                self.start_pos = current_pos
+            else:
+                rect = QtCore.QRectF(self.start_pos, current_pos).normalized()
+                self.rect_item.setRect(rect)
         event.accept()
 
     def mouseReleaseEvent(self, event):
         self.start_pos = None
+        self.dragging = False
+        self.resizing = False
         event.accept()
-
 
 class ImageWithRect(pg.GraphicsLayoutWidget):
     def __init__(self):
