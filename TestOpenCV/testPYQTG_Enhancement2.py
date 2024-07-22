@@ -3,111 +3,132 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
 from PIL import Image
 
-
 class CustomROI(pg.ROI):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-		# 添加四个边上的控制点
-		self.addScaleHandle([0.5, 0], [0.5, 0.5])  # Bottom edge
-		self.addScaleHandle([0.5, 1], [0.5, 0.5])  # Top edge
-		self.addScaleHandle([0, 0.5], [0.5, 0.5])  # Left edge
-		self.addScaleHandle([1, 0.5], [0.5, 0.5])  # Right edge
+        # 添加四个边上的控制点
+        self.addScaleHandle([0.5, 0], [0.5, 0.5])  # Bottom edge
+        self.addScaleHandle([0.5, 1], [0.5, 0.5])  # Top edge
+        self.addScaleHandle([0, 0.5], [0.5, 0.5])  # Left edge
+        self.addScaleHandle([1, 0.5], [0.5, 0.5])  # Right edge
 
-		# 添加四个顶点的虚拟控制点
-		self.addScaleHandle([0, 0], [0, 0])  # Bottom-left corner
-		self.addScaleHandle([0, 1], [0, 1])  # Top-left corner
-		self.addScaleHandle([1, 0], [1, 0])  # Bottom-right corner
-		self.addScaleHandle([1, 1], [1, 1])  # Top-right corner
+        # 添加四个顶点的虚拟控制点
+        self.addScaleHandle([0, 0], [0, 0])  # Bottom-left corner
+        self.addScaleHandle([0, 1], [0, 1])  # Top-left corner
+        self.addScaleHandle([1, 0], [1, 0])  # Bottom-right corner
+        self.addScaleHandle([1, 1], [1, 1])  # Top-right corner
 
-		# 设置四条边的颜色为红色
-		self.setPen('r')
+        # 设置四条边的颜色为红色
+        self.setPen('r')
 
-	def contextMenuEvent(self, event):
-		menu = QtWidgets.QMenu()
-		action_row = menu.addAction("ROW Properties")
-		action_measure = menu.addAction("Measure")
-		action_invert = menu.addAction("Invert")
+        # 添加背景矩形用于填充颜色
+        self.background = QtWidgets.QGraphicsRectItem(self)
+        self.background.setZValue(-1)  # 确保背景在控制点下方
+        self.updateBackground()
 
-		action_row.triggered.connect(self.showRowPropertiesDialog)
-		action_measure.triggered.connect(self.showMeasureDialog)
-		action_invert.triggered.connect(self.invertImage)
+        self.sigRegionChanged.connect(self.updateBackground)
 
-		menu.exec_(event.screenPos())
-		event.accept()  # Prevent default context menu
+    def contextMenuEvent(self, event):
+        menu = QtWidgets.QMenu()
+        action_row = menu.addAction("ROW Properties")
+        action_measure = menu.addAction("Measure")
+        action_invert = menu.addAction("Invert")
 
-	def showRowPropertiesDialog(self):
-		dialog = QtWidgets.QDialog()
-		dialog.setWindowTitle("ROW Properties")
+        action_row.triggered.connect(self.showRowPropertiesDialog)
+        action_measure.triggered.connect(self.showMeasureDialog)
+        action_invert.triggered.connect(self.invertImage)
 
-		layout = QtWidgets.QFormLayout()
+        menu.exec_(event.screenPos())
+        event.accept()  # Prevent default context menu
 
-		labels = ["Property 1", "Property 2", "Property 3", "Property 4", "Property 5"]
-		self.inputs = []
+    def showRowPropertiesDialog(self):
+        dialog = QtWidgets.QDialog()
+        dialog.setWindowTitle("ROW Properties")
 
-		for label in labels:
-			input_field = QtWidgets.QLineEdit()
-			layout.addRow(QtWidgets.QLabel(label), input_field)
-			self.inputs.append(input_field)
+        layout = QtWidgets.QFormLayout()
 
-		buttons = QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
-		button_box = QtWidgets.QDialogButtonBox(buttons)
-		button_box.accepted.connect(dialog.accept)
-		button_box.rejected.connect(dialog.reject)
+        labels = ["Name", "Position", "Group", "Stroke color", "Width", "Fill color"]
+        self.inputs = []
 
-		layout.addRow(button_box)
-		dialog.setLayout(layout)
+        for label in labels:
+            input_field = QtWidgets.QLineEdit()
+            layout.addRow(QtWidgets.QLabel(label), input_field)
+            self.inputs.append(input_field)
 
-		if dialog.exec_():
-			values = [input_field.text() for input_field in self.inputs]
-			print("Accepted with values:", values)
-		else:
-			print("Cancelled")
+        buttons = QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        button_box = QtWidgets.QDialogButtonBox(buttons)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
 
-	def showMeasureDialog(self):
-		if img.image is None or self is None:
-			return
+        layout.addRow(button_box)
+        dialog.setLayout(layout)
 
-		# Get the bounding box of the ROI in image coordinates
-		roi_coords = self.getArraySlice(img.image, img)
-		if roi_coords is None:
-			QtWidgets.QMessageBox.warning(None, "Measure", "Could not determine ROI coordinates.")
-			return
+        if dialog.exec_():
+            values = [input_field.text() for input_field in self.inputs]
+            self.applyProperties(values)
+            print("Accepted with values:", values)
+        else:
+            print("Cancelled")
 
-		(slice_x, slice_y), _ = roi_coords
-		region = img.image[slice_x, slice_y]
+    def applyProperties(self, values):
+        name, position, group, stroke_color, width, fill_color = values
 
-		if region.size == 0:
-			QtWidgets.QMessageBox.warning(None, "Measure", "Selected region is empty.")
-			return
+        if stroke_color:
+            self.setPen(pg.mkPen(stroke_color, width=float(width) if width else 1))
+        if fill_color.lower() in ['red', 'green', 'blue', 'yellow', 'cyan', 'magenta', 'white', 'black']:
+            self.background.setBrush(pg.mkBrush(fill_color.lower()))
+        else:
+            self.background.setBrush(pg.mkBrush(None))  # 清除填充颜色
 
-		area = region.size
-		mean_val = np.mean(region)
-		min_val = np.min(region)
-		max_val = np.max(region)
+    def showMeasureDialog(self):
+        if img.image is None or self is None:
+            return
 
-		dialog = QtWidgets.QDialog()
-		dialog.setWindowTitle("Measure")
+        # Get the bounding box of the ROI in image coordinates
+        roi_coords = self.getArraySlice(img.image, img)
+        if roi_coords is None:
+            QtWidgets.QMessageBox.warning(None, "Measure", "Could not determine ROI coordinates.")
+            return
 
-		layout = QtWidgets.QFormLayout()
+        (slice_x, slice_y), _ = roi_coords
+        region = img.image[slice_x, slice_y]
 
-		layout.addRow(QtWidgets.QLabel("Area:"), QtWidgets.QLabel(str(area)))
-		layout.addRow(QtWidgets.QLabel("Mean:"), QtWidgets.QLabel(str(mean_val)))
-		layout.addRow(QtWidgets.QLabel("Min:"), QtWidgets.QLabel(str(min_val)))
-		layout.addRow(QtWidgets.QLabel("Max:"), QtWidgets.QLabel(str(max_val)))
+        if region.size == 0:
+            QtWidgets.QMessageBox.warning(None, "Measure", "Selected region is empty.")
+            return
 
-		buttons = QtWidgets.QDialogButtonBox.Ok
-		button_box = QtWidgets.QDialogButtonBox(buttons)
-		button_box.accepted.connect(dialog.accept)
+        area = region.size
+        mean_val = np.mean(region)
+        min_val = np.min(region)
+        max_val = np.max(region)
 
-		layout.addRow(button_box)
-		dialog.setLayout(layout)
-		dialog.exec_()
+        dialog = QtWidgets.QDialog()
+        dialog.setWindowTitle("Measure")
 
-	def invertImage(self):
-		if img.image is not None:
-			inverted_image = 255 - img.image  # 简单地取反处理，假设是灰度图像
-			img.setImage(inverted_image)
+        layout = QtWidgets.QFormLayout()
+
+        layout.addRow(QtWidgets.QLabel("Area:"), QtWidgets.QLabel(str(area)))
+        layout.addRow(QtWidgets.QLabel("Mean:"), QtWidgets.QLabel(str(mean_val)))
+        layout.addRow(QtWidgets.QLabel("Min:"), QtWidgets.QLabel(str(min_val)))
+        layout.addRow(QtWidgets.QLabel("Max:"), QtWidgets.QLabel(str(max_val)))
+
+        buttons = QtWidgets.QDialogButtonBox.Ok
+        button_box = QtWidgets.QDialogButtonBox(buttons)
+        button_box.accepted.connect(dialog.accept)
+
+        layout.addRow(button_box)
+        dialog.setLayout(layout)
+        dialog.exec_()
+
+    def invertImage(self):
+        if img.image is not None:
+            inverted_image = 255 - img.image  # 简单地取反处理，假设是灰度图像
+            img.setImage(inverted_image)
+
+    def updateBackground(self):
+        rect = self.boundingRect()
+        self.background.setRect(rect)
 
 
 pg.setConfigOptions(imageAxisOrder='row-major')
@@ -159,7 +180,7 @@ data = np.array(image)
 
 # Convert to grayscale if necessary
 if data.ndim == 3:
-	data = np.mean(data, axis=2).astype(np.uint8)
+    data = np.mean(data, axis=2).astype(np.uint8)
 
 # Flip the image vertically to correct the upside-down issue
 data = np.flipud(data)
@@ -180,9 +201,9 @@ p1.autoRange()
 
 # Callbacks for handling user interaction
 def updatePlot():
-	global img, roi, data, p2
-	selected = roi.getArrayRegion(data, img)
-	p2.plot(selected.mean(axis=0), clear=True)
+    global img, roi, data, p2
+    selected = roi.getArrayRegion(data, img)
+    p2.plot(selected.mean(axis=0), clear=True)
 
 
 roi.sigRegionChanged.connect(updatePlot)
@@ -190,30 +211,30 @@ updatePlot()
 
 
 def updateIsocurve():
-	global isoLine, iso
-	iso.setLevel(isoLine.value())
+    global isoLine, iso
+    iso.setLevel(isoLine.value())
 
 
 isoLine.sigDragged.connect(updateIsocurve)
 
 
 def imageHoverEvent(event):
-	"""Show the position, pixel, and value under the mouse cursor."""
-	if event.isExit():
-		p1.setTitle("")
-		return
-	pos = event.pos()
-	i, j = pos.y(), pos.x()
-	i = int(np.clip(i, 0, data.shape[0] - 1))
-	j = int(np.clip(j, 0, data.shape[1] - 1))
-	val = data[i, j]
-	ppos = img.mapToParent(pos)
-	x, y = ppos.x(), ppos.y()
-	p1.setTitle("pos: (%0.1f, %0.1f)  pixel: (%d, %d)  value: %.3g" % (x, y, i, j, val))
+    """Show the position, pixel, and value under the mouse cursor."""
+    if event.isExit():
+        p1.setTitle("")
+        return
+    pos = event.pos()
+    i, j = pos.y(), pos.x()
+    i = int(np.clip(i, 0, data.shape[0] - 1))
+    j = int(np.clip(j, 0, data.shape[1] - 1))
+    val = data[i, j]
+    ppos = img.mapToParent(pos)
+    x, y = ppos.x(), ppos.y()
+    p1.setTitle("pos: (%0.1f, %0.1f)  pixel: (%d, %d)  value: %.3g" % (x, y, i, j, val))
 
 
 # Monkey-patch the image to use our custom hover function.
 img.hoverEvent = imageHoverEvent
 
 if __name__ == '__main__':
-	pg.exec()
+    pg.exec()
