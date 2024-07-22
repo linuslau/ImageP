@@ -14,6 +14,117 @@ from PIL import Image
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
 
+class CustomROI(pg.ROI):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # 添加四个边上的控制点
+        self.addScaleHandle([0.5, 0], [0.5, 0.5])  # Bottom edge
+        self.addScaleHandle([0.5, 1], [0.5, 0.5])  # Top edge
+        self.addScaleHandle([0, 0.5], [0.5, 0.5])  # Left edge
+        self.addScaleHandle([1, 0.5], [0.5, 0.5])  # Right edge
+
+        # 添加四个顶点的虚拟控制点
+        self.addScaleHandle([0, 0], [0, 0])  # Bottom-left corner
+        self.addScaleHandle([0, 1], [0, 1])  # Top-left corner
+        self.addScaleHandle([1, 0], [1, 0])  # Bottom-right corner
+        self.addScaleHandle([1, 1], [1, 1])  # Top-right corner
+
+        # 设置四条边的颜色为红色
+        self.setPen('r')
+
+    def contextMenuEvent(self, event):
+        menu = QtWidgets.QMenu()
+        row_properties_action = menu.addAction("ROW Properties")
+        row_properties_action.triggered.connect(self.showRowPropertiesDialog)
+
+        measure_action = menu.addAction("Measure")
+        measure_action.triggered.connect(self.showMeasureDialog)
+
+        invert_action = menu.addAction("Invert")
+        invert_action.triggered.connect(self.invertImage)
+
+        menu.exec_(event.screenPos())
+
+    def showRowPropertiesDialog(self):
+        dialog = QtWidgets.QDialog()
+        dialog.setWindowTitle("ROW Properties")
+
+        layout = QtWidgets.QFormLayout()
+
+        labels = ["Property 1", "Property 2", "Property 3", "Property 4", "Property 5"]
+        self.inputs = []
+
+        for label in labels:
+            input_field = QtWidgets.QLineEdit()
+            layout.addRow(QtWidgets.QLabel(label), input_field)
+            self.inputs.append(input_field)
+
+        buttons = QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        button_box = QtWidgets.QDialogButtonBox(buttons)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+
+        layout.addRow(button_box)
+        dialog.setLayout(layout)
+
+        if dialog.exec_():
+            values = [input_field.text() for input_field in self.inputs]
+            print("Accepted with values:", values)
+        else:
+            print("Cancelled")
+
+    def showMeasureDialog(self):
+        if self.item is None:
+            return
+
+        bounds = self.parentBounds()
+        x1, y1 = int(bounds.left()), int(bounds.top())
+        x2, y2 = int(bounds.right()), int(bounds.bottom())
+
+        x1, x2 = max(0, x1), min(self.image_data.shape[1], x2)
+        y1, y2 = max(0, y1), min(self.image_data.shape[0], y2)
+
+        region = self.image_data[y1:y2, x1:x2]
+        if region.size == 0:
+            QtWidgets.QMessageBox.warning(None, "Measure", "Selected region is empty.")
+            return
+
+        area = region.size
+        mean_val = np.mean(region)
+        min_val = np.min(region)
+        max_val = np.max(region)
+
+        dialog = QtWidgets.QDialog()
+        dialog.setWindowTitle("Measure")
+
+        layout = QtWidgets.QFormLayout()
+
+        layout.addRow(QtWidgets.QLabel("Area:"), QtWidgets.QLabel(str(area)))
+        layout.addRow(QtWidgets.QLabel("Mean:"), QtWidgets.QLabel(str(mean_val)))
+        layout.addRow(QtWidgets.QLabel("Min:"), QtWidgets.QLabel(str(min_val)))
+        layout.addRow(QtWidgets.QLabel("Max:"), QtWidgets.QLabel(str(max_val)))
+
+        # Add plot area to the dialog
+        plot_widget = pg.PlotWidget()
+        layout.addRow(plot_widget)
+        plot_widget.plot(region.mean(axis=0), pen='b')
+
+        buttons = QtWidgets.QDialogButtonBox.Ok
+        button_box = QtWidgets.QDialogButtonBox(buttons)
+        button_box.accepted.connect(dialog.accept)
+
+        layout.addRow(button_box)
+        dialog.setLayout(layout)
+        dialog.exec_()
+
+    def invertImage(self):
+        if self.item is not None:
+            inverted_image = 255 - self.image_data  # 简单地取反处理，假设是灰度图像
+            self.image_data = inverted_image
+            self.item.setImage(inverted_image)
+
+
 class CustomViewBox(pg.ViewBox):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -163,6 +274,10 @@ class CustomViewBox(pg.ViewBox):
         y1, y2 = max(0, y1), min(self.image_data.shape[0], y2)
 
         region = self.image_data[y1:y2, x1:x2]
+        if region.size == 0:
+            QtWidgets.QMessageBox.warning(None, "Measure", "Selected region is empty.")
+            return
+
         area = region.size
         mean_val = np.mean(region)
         min_val = np.min(region)
@@ -177,6 +292,11 @@ class CustomViewBox(pg.ViewBox):
         layout.addRow(QtWidgets.QLabel("Mean:"), QtWidgets.QLabel(str(mean_val)))
         layout.addRow(QtWidgets.QLabel("Min:"), QtWidgets.QLabel(str(min_val)))
         layout.addRow(QtWidgets.QLabel("Max:"), QtWidgets.QLabel(str(max_val)))
+
+        # Add plot area to the dialog
+        plot_widget = pg.PlotWidget()
+        layout.addRow(plot_widget)
+        plot_widget.plot(region.mean(axis=0), pen='b')
 
         buttons = QtWidgets.QDialogButtonBox.Ok
         button_box = QtWidgets.QDialogButtonBox(buttons)
@@ -273,10 +393,8 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
 
     def setupROIAndHistogram(self):
         # Custom ROI for selecting an image region
-        roi = pg.ROI([-8, 14], [6, 5])
-        roi.addScaleHandle([0.5, 1], [0.5, 0.5])
-        roi.addScaleHandle([0, 0.5], [0.5, 0.5])
-        self.plot_item.addItem(roi)
+        roi = CustomROI([-8, 14], [6, 5])
+        self.view.addItem(roi)
         roi.setZValue(10)  # make sure ROI is drawn above image
 
         # Isocurve drawing
@@ -287,6 +405,7 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
         # Contrast/color control
         hist = pg.HistogramLUTItem()
         hist.setImageItem(self.img)
+        hist.setMinimumWidth(250)  # 设置最小宽度
         self.addItem(hist)
 
         # Draggable line for setting isocurve level
@@ -298,13 +417,13 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
 
         # Another plot area for displaying ROI data
         self.nextRow()
-        p2 = self.addPlot(colspan=2)
-        p2.setMaximumHeight(250)
+        #p2 = self.addPlot(colspan=2)
+        #p2.setMaximumHeight(250)
 
         # Callbacks for handling user interaction
         def updatePlot():
             selected = roi.getArrayRegion(self.img.image, self.img)
-            p2.plot(selected.mean(axis=0), clear=True)
+            #p2.plot(selected.mean(axis=0), clear=True)
 
         roi.sigRegionChanged.connect(updatePlot)
         updatePlot()
