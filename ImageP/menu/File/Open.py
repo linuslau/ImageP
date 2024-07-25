@@ -1,6 +1,9 @@
 import cv2
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
+#def menu_click():
+#    print("Open.py executed")
+
 def handle_click():
     print("Open file clicked")
     # 创建文件对话框以选择图像文件

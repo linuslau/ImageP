@@ -1,6 +1,6 @@
 import os
 from PyQt5.QtWidgets import QAction
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QKeySequence
 
 def load_menu_order(menu_path):
     order_file_path = os.path.join(menu_path, 'order.txt')
@@ -8,6 +8,13 @@ def load_menu_order(menu_path):
         with open(order_file_path, 'r') as order_file:
             return [line.strip() for line in order_file.readlines() if line.strip()]
     return []
+
+def load_shortcut(file_path):
+    shortcut_file_path = os.path.splitext(file_path)[0] + '.txt'
+    if os.path.exists(shortcut_file_path):
+        with open(shortcut_file_path, 'r') as shortcut_file:
+            return shortcut_file.readline().strip()
+    return None
 
 def populate_icons(toolbar, icons_path, status_bar):
     items = os.listdir(icons_path)
@@ -34,9 +41,14 @@ def populate_menu(menu, folder_path, status_bar):
             sub_menu = menu.addMenu(item)
             populate_menu(sub_menu, item_path, status_bar)
         elif item.endswith('.py') and item != '__init__.py':
-            action = QAction(item.replace('.py', ''), menu)
-            action.triggered.connect(lambda checked, path=item_path: handle_menu_click(path))
-            action.hovered.connect(lambda: status_bar.showMessage(item.replace('.py', '')))
+            action_text = item.replace('.py', '')
+            action = QAction(action_text, menu)
+            shortcut = load_shortcut(item_path)
+            if shortcut:
+                action.setShortcut(QKeySequence(shortcut))
+                action.setText(f"{action_text}")
+            action.triggered.connect(lambda checked=False, path=item_path: handle_menu_click(path))
+            action.hovered.connect(lambda: status_bar.showMessage(action_text))
             menu.addAction(action)
 
 def add_icon_action(toolbar, icon_path, status_bar):
@@ -53,9 +65,11 @@ def add_icon_action(toolbar, icon_path, status_bar):
 
 def handle_menu_click(file_path):
     relative_path = os.path.relpath(file_path, os.path.join(os.path.dirname(__file__), '..'))
-    module_name = 'ImageP.' + relative_path.replace(os.path.sep, '.').replace('.py', '')
+    module_name = relative_path.replace(os.path.sep, '.').replace('.py', '')
     try:
         module_spec = __import__(module_name, fromlist=[module_name.split('.')[-1]])
+        if hasattr(module_spec, 'menu_click'):
+            module_spec.menu_click()
         if hasattr(module_spec, 'handle_click'):
             module_spec.handle_click()
     except ModuleNotFoundError as e:
@@ -65,11 +79,13 @@ def handle_menu_click(file_path):
 
 def handle_icon_click(py_file):
     relative_path = os.path.relpath(py_file, os.path.join(os.path.dirname(__file__), '..'))
-    module_name = 'ImageP.' + relative_path.replace(os.path.sep, '.').replace('.py', '')
+    module_name = relative_path.replace(os.path.sep, '.').replace('.py', '')
     try:
         module_spec = __import__(module_name, fromlist=[module_name])
         if hasattr(module_spec, 'handle_click'):
             module_spec.handle_click()
+        if hasattr(module_spec, 'menu_click'):
+            module_spec.menu_click()
     except ModuleNotFoundError as e:
         print(f"Module not found: {e}")
     except Exception as e:
