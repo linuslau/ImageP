@@ -1,15 +1,8 @@
 from PyQt5 import QtWidgets, QtCore
 from ui.main_ui_qt5 import Ui_MainWindow
-from utils.menu_populate import populate_menu, populate_icons
+from utils.menu_populate import populate_menu, populate_icons, load_menu_order
 import sys
 import os
-
-def load_menu_order(menu_path):
-    order_file = os.path.join(menu_path, 'order.txt')
-    if not os.path.exists(order_file):
-        return []
-    with open(order_file, 'r') as f:
-        return [line.strip() for line in f if line.strip()]
 
 def add_menu_item(menu, path, is_folder, status_bar):
     if is_folder:
@@ -22,7 +15,7 @@ def add_menu_item(menu, path, is_folder, status_bar):
         menu.addAction(action)
 
 def handle_menu_click(file_path):
-    # 根据文件路径导入相应模块并调用预定义的函数
+    # Import the corresponding module based on the file path and call the predefined function
     module_name = os.path.splitext(os.path.basename(file_path))[0]
     module_spec = __import__('menu.' + module_name, fromlist=[module_name])
     if hasattr(module_spec, 'menu_click'):
@@ -38,26 +31,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.initUI()
 
     def initUI(self):
-        # 获取当前脚本文件所在目录的路径
+        # Get the path of the current script file
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        # 定位到安装路径中的 menu 目录
+        # Locate the menu directory in the installation path
         root_menu_path = os.path.join(script_dir, 'menu')
 
         # Getting the root icons path
         icons_path = os.path.join(os.path.dirname(__file__), 'icons')
         print(f"Root icons path: {icons_path}")
 
-        # 如果路径不存在，尝试从包安装目录查找
+        # If the path does not exist, try to find it from the package installation directory
         if not os.path.exists(root_menu_path):
             root_menu_path = os.path.join(os.path.dirname(__file__), 'menu')
 
         print(f"Root menu path: {root_menu_path}")
 
         if os.path.exists(root_menu_path) and os.path.isdir(root_menu_path):
-            # 获取所有文件夹和文件
-            items = os.listdir(root_menu_path)
+            # Get the order of menu items
+            ordered_items = load_menu_order(root_menu_path)
 
-            for item in sorted(items):
+            # Get all folders and files and add them in order
+            items = os.listdir(root_menu_path)
+            items = sorted(items, key=lambda x: (ordered_items.index(x) if x in ordered_items else float('inf'), x))
+
+            for item in items:
                 item_path = os.path.join(root_menu_path, item)
                 if (os.path.isdir(item_path) and item != '__pycache__') or (item.endswith('.py') and item != '__init__.py'):
                     add_menu_item(self.ui.menubar, item_path, os.path.isdir(item_path), self.ui.statusbar)

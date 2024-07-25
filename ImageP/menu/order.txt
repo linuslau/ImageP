@@ -1,2 +1,9 @@
 File
+Edit
+Image
+Process
+Analyze
+Plugins
+Window
+Help
 Open.py
