@@ -17,6 +17,7 @@ class CustomViewBox(pg.ViewBox):
         self.image_data = None
         self.image_item = None
         self.control_points = []
+        self.control_items = []
         self.dragging_control_point = None
         self.hovering_control_point = None
 
@@ -25,6 +26,10 @@ class CustomViewBox(pg.ViewBox):
         self.image_item = image_item
 
     def updateControlPoints(self):
+        for item in self.control_items:
+            self.removeItem(item)
+        self.control_items = []
+
         if self.rect_item is None:
             self.control_points = []
             return
@@ -43,6 +48,12 @@ class CustomViewBox(pg.ViewBox):
             QtCore.QPointF(x2, (y1 + y2) / 2)  # Right-center
         ]
 
+        for point in self.control_points:
+            control_item = QtWidgets.QGraphicsEllipseItem(point.x() - 5, point.y() - 5, 10, 10)
+            control_item.setBrush(pg.mkBrush('b'))
+            self.addItem(control_item)
+            self.control_items.append(control_item)
+
     def mousePressEvent(self, event):
         pos = event.pos()
         view_pos = self.mapToView(pos)
@@ -56,7 +67,7 @@ class CustomViewBox(pg.ViewBox):
         if self.rect_item is not None:
             rect = self.rect_item.rect()
             for i, point in enumerate(self.control_points):
-                if (point - view_pos).manhattanLength() < 10:  # 增大阈值
+                if (point - view_pos).manhattanLength() < 10:
                     self.start_pos = view_pos
                     self.resizing = True
                     self.dragging_control_point = i
