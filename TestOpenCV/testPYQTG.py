@@ -16,45 +16,68 @@ class CustomViewBox(pg.ViewBox):
         self.rect_initial = None
         self.image_data = None
         self.image_item = None
+        self.control_points = []
+        self.dragging_control_point = None
+        self.hovering_control_point = None
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
         self.image_item = image_item
 
+    def updateControlPoints(self):
+        if self.rect_item is None:
+            self.control_points = []
+            return
+
+        rect = self.rect_item.rect()
+        x1, y1 = rect.topLeft().x(), rect.topLeft().y()
+        x2, y2 = rect.bottomRight().x(), rect.bottomRight().y()
+        self.control_points = [
+            QtCore.QPointF(x1, y1),  # Top-left
+            QtCore.QPointF(x2, y1),  # Top-right
+            QtCore.QPointF(x1, y2),  # Bottom-left
+            QtCore.QPointF(x2, y2),  # Bottom-right
+            QtCore.QPointF((x1 + x2) / 2, y1),  # Top-center
+            QtCore.QPointF((x1 + x2) / 2, y2),  # Bottom-center
+            QtCore.QPointF(x1, (y1 + y2) / 2),  # Left-center
+            QtCore.QPointF(x2, (y1 + y2) / 2)  # Right-center
+        ]
+
     def mousePressEvent(self, event):
+        pos = event.pos()
+        view_pos = self.mapToView(pos)
+
         if event.button() == QtCore.Qt.RightButton and self.rect_item is not None:
-            pos = event.pos()
-            view_pos = self.mapToView(pos)
             rect = self.rect_item.rect()
             if rect.contains(view_pos):
                 self.showContextMenu(event)
                 return
 
-        pos = event.pos()
-        view_pos = self.mapToView(pos)
-
         if self.rect_item is not None:
             rect = self.rect_item.rect()
-            if self.isNearEdge(view_pos, rect):
-                self.start_pos = view_pos
-                self.resizing = True
-                self.rect_initial = rect
-                self.resize_start_pos = self.start_pos
-            elif rect.contains(view_pos):
+            for i, point in enumerate(self.control_points):
+                if (point - view_pos).manhattanLength() < 10:  # 增大阈值
+                    self.start_pos = view_pos
+                    self.resizing = True
+                    self.dragging_control_point = i
+                    self.rect_initial = rect
+                    self.resize_start_pos = self.start_pos
+                    event.accept()
+                    return
+
+            if rect.contains(view_pos):
                 self.start_pos = view_pos
                 self.dragging = True
             else:
                 self.removeItem(self.rect_item)
                 self.rect_item = None
-                self.start_pos = self.mapToView(pos)
-                self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
-                self.rect_item.setPen(pg.mkPen(color='r', width=2))
-                self.addItem(self.rect_item)
-        else:
+
+        if self.rect_item is None:
             self.start_pos = self.mapToView(pos)
             self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
             self.rect_item.setPen(pg.mkPen(color='r', width=2))
             self.addItem(self.rect_item)
+            self.updateControlPoints()
 
         event.accept()
 
@@ -69,15 +92,32 @@ class CustomViewBox(pg.ViewBox):
                 rect.moveTopLeft(QtCore.QPointF(rect.left() + dx, rect.top() + dy))
                 self.rect_item.setRect(rect)
                 self.start_pos = current_pos
-            elif self.resizing:
-                dx = current_pos.x() - self.resize_start_pos.x()
-                dy = current_pos.y() - self.resize_start_pos.y()
-                new_rect = QtCore.QRectF(self.rect_initial)
-                new_rect.setBottomRight(QtCore.QPointF(new_rect.right() + dx, new_rect.bottom() + dy))
-                self.rect_item.setRect(new_rect)
+                self.updateControlPoints()
+            elif self.resizing and self.dragging_control_point is not None:
+                rect = self.rect_initial
+                if self.dragging_control_point == 0:  # Top-left
+                    rect.setTopLeft(current_pos)
+                elif self.dragging_control_point == 1:  # Top-right
+                    rect.setTopRight(current_pos)
+                elif self.dragging_control_point == 2:  # Bottom-left
+                    rect.setBottomLeft(current_pos)
+                elif self.dragging_control_point == 3:  # Bottom-right
+                    rect.setBottomRight(current_pos)
+                elif self.dragging_control_point == 4:  # Top-center
+                    rect.setTop(current_pos.y())
+                elif self.dragging_control_point == 5:  # Bottom-center
+                    rect.setBottom(current_pos.y())
+                elif self.dragging_control_point == 6:  # Left-center
+                    rect.setLeft(current_pos.x())
+                elif self.dragging_control_point == 7:  # Right-center
+                    rect.setRight(current_pos.x())
+
+                self.rect_item.setRect(rect)
+                self.updateControlPoints()
             else:
                 rect = QtCore.QRectF(self.start_pos, current_pos).normalized()
                 self.rect_item.setRect(rect)
+                self.updateControlPoints()
         event.accept()
 
     def mouseReleaseEvent(self, event):
@@ -86,16 +126,8 @@ class CustomViewBox(pg.ViewBox):
         self.resizing = False
         self.rect_initial = None
         self.resize_start_pos = None
+        self.dragging_control_point = None
         event.accept()
-
-    def isNearEdge(self, pos, rect):
-        edge_tolerance = 10
-        near_left = abs(pos.x() - rect.left()) < edge_tolerance
-        near_right = abs(pos.x() - rect.right()) < edge_tolerance
-        near_top = abs(pos.y() - rect.top()) < edge_tolerance
-        near_bottom = abs(pos.y() - rect.bottom()) < edge_tolerance
-
-        return near_left or near_right or near_top or near_bottom
 
     def showContextMenu(self, event):
         menu = QtWidgets.QMenu()
