@@ -1,0 +1,18 @@
+New
+Open.py
+Open Next.py
+Open Samples
+Open Recent
+Import
+Show Folder
+-
+Close.py
+Close All.py
+Save.py
+Save As
+Revert.py
+-
+Page Setup.py
+Print.py
+-
+Quit.py

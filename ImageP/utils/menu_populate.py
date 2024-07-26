@@ -1,6 +1,7 @@
 import os
 from PyQt5.QtWidgets import QAction
 from PyQt5.QtGui import QIcon, QPixmap, QKeySequence
+from PyQt5.QtCore import Qt
 
 def load_menu_order(menu_path):
     order_file_path = os.path.join(menu_path, 'order.txt')
@@ -22,27 +23,28 @@ def load_icon(file_path):
         pixmap = QPixmap(icon_file_path)
         if not pixmap.isNull():
             size = max(pixmap.width(), pixmap.height())
-            return QIcon(pixmap.scaled(size, size))
+            return QIcon(pixmap.scaled(size, size, Qt.KeepAspectRatio))
     return None
 
 def populate_icons(toolbar, icons_path, status_bar):
     items = os.listdir(icons_path)
     ordered_items = load_menu_order(icons_path)
+    combined_items = ordered_items + [item for item in items if item not in ordered_items]
 
-    items = sorted(items, key=lambda x: (ordered_items.index(x) if x in ordered_items else float('inf'), x))
-
-    for item in items:
+    for item in combined_items:
         item_path = os.path.join(icons_path, item)
         if os.path.isdir(item_path):
             add_icon_action(toolbar, item_path, status_bar)
 
 def populate_menu(menu, folder_path, status_bar):
     ordered_items = load_menu_order(folder_path)
-
     items = os.listdir(folder_path)
-    items = sorted(items, key=lambda x: (ordered_items.index(x) if x in ordered_items else float('inf'), x))
+    combined_items = ordered_items + [item for item in items if item not in ordered_items]
 
-    for item in items:
+    for item in combined_items:
+        if item == '-':
+            menu.addSeparator()
+            continue
         item_path = os.path.join(folder_path, item)
         if item == '__pycache__':
             continue
@@ -57,8 +59,7 @@ def populate_menu(menu, folder_path, status_bar):
             shortcut = load_shortcut(item_path)
             if shortcut:
                 action.setShortcut(QKeySequence(shortcut))
-                # action_text_with_shortcut = f"{action_text} ({shortcut})"
-                action_text_with_shortcut = f"{action_text}"
+                action_text_with_shortcut = f"{action_text} ({shortcut})"
                 action.setText(action_text_with_shortcut)
             else:
                 action.setText(action_text)

@@ -51,13 +51,13 @@ class MainWindow(QtWidgets.QMainWindow):
             ordered_items = load_menu_order(root_menu_path)
 
             # Get all folders and files and add them in order
-            items = os.listdir(root_menu_path)
-            items = sorted(items, key=lambda x: (ordered_items.index(x) if x in ordered_items else float('inf'), x))
-
-            for item in items:
-                item_path = os.path.join(root_menu_path, item)
-                if (os.path.isdir(item_path) and item != '__pycache__') or (item.endswith('.py') and item != '__init__.py'):
-                    add_menu_item(self.ui.menubar, item_path, os.path.isdir(item_path), self.ui.statusbar)
+            for item in ordered_items:
+                if item == '-':
+                    self.ui.menubar.addSeparator()
+                else:
+                    item_path = os.path.join(root_menu_path, item)
+                    if (os.path.isdir(item_path) and item != '__pycache__') or (item.endswith('.py') and item != '__init__.py'):
+                        add_menu_item(self.ui.menubar, item_path, os.path.isdir(item_path), self.ui.statusbar)
 
         # Check if the icons directory exists
         if os.path.exists(icons_path) and os.path.isdir(icons_path):
