@@ -9,11 +9,11 @@ class CustomViewBox(pg.ViewBox):
         super().__init__(*args, **kwargs)
         self.setMouseMode(self.RectMode)
         self.start_pos = None
-        self.rect_item = None
+        self.shape_item = None
         self.dragging = False
         self.resizing = False
         self.resize_start_pos = None
-        self.rect_initial = None
+        self.shape_initial = None
         self.image_data = None
         self.image_item = None
         self.control_points = []
@@ -21,6 +21,7 @@ class CustomViewBox(pg.ViewBox):
         self.dragging_control_point = None
         self.hovering_control_point = None
         self.setMenuEnabled(True)  # 启用右键菜单
+        self.use_rectangle = False  # 控制使用矩形还是椭圆
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -31,11 +32,11 @@ class CustomViewBox(pg.ViewBox):
             self.removeItem(item)
         self.control_items = []
 
-        if self.rect_item is None:
+        if self.shape_item is None:
             self.control_points = []
             return
 
-        rect = self.rect_item.rect()
+        rect = self.shape_item.rect()
         x1, y1 = rect.topLeft().x(), rect.topLeft().y()
         x2, y2 = rect.bottomRight().x(), rect.bottomRight().y()
         self.control_points = [
@@ -60,20 +61,20 @@ class CustomViewBox(pg.ViewBox):
         view_pos = self.mapToView(pos)
 
         if event.button() == QtCore.Qt.RightButton:
-            if self.rect_item is not None and self.rect_item.rect().contains(view_pos):
+            if self.shape_item is not None and self.shape_item.rect().contains(view_pos):
                 self.showCustomContextMenu(event)
             else:
                 super().mousePressEvent(event)
             return
 
-        if self.rect_item is not None:
-            rect = self.rect_item.rect()
+        if self.shape_item is not None:
+            rect = self.shape_item.rect()
             for i, point in enumerate(self.control_points):
                 if (point - view_pos).manhattanLength() < 10:
                     self.start_pos = view_pos
                     self.resizing = True
                     self.dragging_control_point = i
-                    self.rect_initial = rect
+                    self.shape_initial = rect
                     self.resize_start_pos = self.start_pos
                     event.accept()
                     return
@@ -82,32 +83,35 @@ class CustomViewBox(pg.ViewBox):
                 self.start_pos = view_pos
                 self.dragging = True
             else:
-                self.removeItem(self.rect_item)
-                self.rect_item = None
+                self.removeItem(self.shape_item)
+                self.shape_item = None
 
-        if self.rect_item is None:
+        if self.shape_item is None:
             self.start_pos = self.mapToView(pos)
-            self.rect_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
-            self.rect_item.setPen(pg.mkPen(color='r', width=2))
-            self.addItem(self.rect_item)
+            if self.use_rectangle:
+                self.shape_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
+            else:
+                self.shape_item = QtWidgets.QGraphicsEllipseItem(QtCore.QRectF(self.start_pos, self.start_pos))
+            self.shape_item.setPen(pg.mkPen(color='r', width=2))
+            self.addItem(self.shape_item)
             self.updateControlPoints()
 
         event.accept()
 
     def mouseMoveEvent(self, event):
-        if self.rect_item is not None and self.start_pos is not None:
+        if self.shape_item is not None and self.start_pos is not None:
             current_pos = self.mapToView(event.pos())
 
             if self.dragging:
                 dx = current_pos.x() - self.start_pos.x()
                 dy = current_pos.y() - self.start_pos.y()
-                rect = self.rect_item.rect()
+                rect = self.shape_item.rect()
                 rect.moveTopLeft(QtCore.QPointF(rect.left() + dx, rect.top() + dy))
-                self.rect_item.setRect(rect)
+                self.shape_item.setRect(rect)
                 self.start_pos = current_pos
                 self.updateControlPoints()
             elif self.resizing and self.dragging_control_point is not None:
-                rect = self.rect_initial
+                rect = self.shape_initial
                 if self.dragging_control_point == 0:  # Top-left
                     rect.setTopLeft(current_pos)
                 elif self.dragging_control_point == 1:  # Top-right
@@ -125,11 +129,11 @@ class CustomViewBox(pg.ViewBox):
                 elif self.dragging_control_point == 7:  # Right-center
                     rect.setRight(current_pos.x())
 
-                self.rect_item.setRect(rect)
+                self.shape_item.setRect(rect)
                 self.updateControlPoints()
             else:
                 rect = QtCore.QRectF(self.start_pos, current_pos).normalized()
-                self.rect_item.setRect(rect)
+                self.shape_item.setRect(rect)
                 self.updateControlPoints()
         event.accept()
 
@@ -137,7 +141,7 @@ class CustomViewBox(pg.ViewBox):
         self.start_pos = None
         self.dragging = False
         self.resizing = False
-        self.rect_initial = None
+        self.shape_initial = None
         self.resize_start_pos = None
         self.dragging_control_point = None
         event.accept()
@@ -184,10 +188,10 @@ class CustomViewBox(pg.ViewBox):
             print("Cancelled")
 
     def showMeasureDialog(self):
-        if self.image_data is None or self.rect_item is None:
+        if self.image_data is None or self.shape_item is None:
             return
 
-        rect = self.rect_item.rect()
+        rect = self.shape_item.rect()
         x1, y1 = int(rect.left()), int(rect.top())
         x2, y2 = int(rect.right()), int(rect.bottom())
 
