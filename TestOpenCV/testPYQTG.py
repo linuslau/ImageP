@@ -20,6 +20,7 @@ class CustomViewBox(pg.ViewBox):
         self.control_items = []
         self.dragging_control_point = None
         self.hovering_control_point = None
+        self.setMenuEnabled(True)  # 启用右键菜单
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -50,7 +51,7 @@ class CustomViewBox(pg.ViewBox):
 
         for point in self.control_points:
             control_item = QtWidgets.QGraphicsEllipseItem(point.x() - 3, point.y() - 3, 6, 6)  # 控制点缩小到 6x6 像素
-            control_item.setBrush(pg.mkBrush('w'))  # 设置控制点颜色为蓝色
+            control_item.setBrush(pg.mkBrush('b'))  # 设置控制点颜色为蓝色
             self.addItem(control_item)
             self.control_items.append(control_item)
 
@@ -58,11 +59,12 @@ class CustomViewBox(pg.ViewBox):
         pos = event.pos()
         view_pos = self.mapToView(pos)
 
-        if event.button() == QtCore.Qt.RightButton and self.rect_item is not None:
-            rect = self.rect_item.rect()
-            if rect.contains(view_pos):
-                self.showContextMenu(event)
-                return
+        if event.button() == QtCore.Qt.RightButton:
+            if self.rect_item is not None and self.rect_item.rect().contains(view_pos):
+                self.showCustomContextMenu(event)
+            else:
+                super().mousePressEvent(event)
+            return
 
         if self.rect_item is not None:
             rect = self.rect_item.rect()
@@ -140,7 +142,7 @@ class CustomViewBox(pg.ViewBox):
         self.dragging_control_point = None
         event.accept()
 
-    def showContextMenu(self, event):
+    def showCustomContextMenu(self, event):
         menu = QtWidgets.QMenu()
         row_properties_action = menu.addAction("ROW Properties")
         row_properties_action.triggered.connect(self.showRowPropertiesDialog)
