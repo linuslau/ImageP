@@ -49,8 +49,8 @@ class CustomViewBox(pg.ViewBox):
         ]
 
         for point in self.control_points:
-            control_item = QtWidgets.QGraphicsEllipseItem(point.x() - 5, point.y() - 5, 10, 10)
-            control_item.setBrush(pg.mkBrush('b'))
+            control_item = QtWidgets.QGraphicsEllipseItem(point.x() - 3, point.y() - 3, 6, 6)  # 控制点缩小到 6x6 像素
+            control_item.setBrush(pg.mkBrush('w'))  # 设置控制点颜色为蓝色
             self.addItem(control_item)
             self.control_items.append(control_item)
 
