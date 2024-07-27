@@ -23,6 +23,7 @@ class CustomViewBox(pg.ViewBox):
         self.setMenuEnabled(True)  # 启用右键菜单
         self.shape_type = "polygon"  # 控制绘制的形状：rectangle, ellipse, polygon
         self.polygon_points = []
+        self.temp_line = None
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -74,13 +75,17 @@ class CustomViewBox(pg.ViewBox):
         if self.shape_type == "polygon":
             if event.button() == QtCore.Qt.LeftButton:
                 self.polygon_points.append(view_pos)
-                if len(self.polygon_points) > 1:
-                    if self.shape_item is not None:
-                        self.removeItem(self.shape_item)
-                    self.shape_item = QtWidgets.QGraphicsPolygonItem(QtGui.QPolygonF(self.polygon_points))
+                if self.shape_item is None:
+                    self.shape_item = QtWidgets.QGraphicsPolygonItem()
                     self.shape_item.setPen(pg.mkPen(color='r', width=2))
                     self.addItem(self.shape_item)
+                self.shape_item.setPolygon(QtGui.QPolygonF(self.polygon_points))
                 self.updateControlPoints()
+                self.start_pos = view_pos
+                if self.temp_line is None:
+                    self.temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(view_pos, view_pos))
+                    self.temp_line.setPen(pg.mkPen(color='r', width=2, style=QtCore.Qt.DashLine))
+                    self.addItem(self.temp_line)
             elif event.button() == QtCore.Qt.MiddleButton:
                 self.completePolygon()
             return
@@ -130,11 +135,9 @@ class CustomViewBox(pg.ViewBox):
             if self.shape_type == "polygon":
                 if len(self.polygon_points) > 0:
                     temp_points = self.polygon_points + [current_pos]
-                    if self.shape_item is not None:
-                        self.removeItem(self.shape_item)
-                    self.shape_item = QtWidgets.QGraphicsPolygonItem(QtGui.QPolygonF(temp_points))
-                    self.shape_item.setPen(pg.mkPen(color='r', width=2))
-                    self.addItem(self.shape_item)
+                    self.shape_item.setPolygon(QtGui.QPolygonF(temp_points))
+                if self.temp_line is not None:
+                    self.temp_line.setLine(QtCore.QLineF(self.start_pos, current_pos))
                 self.updateControlPoints()
                 return
 
@@ -180,6 +183,9 @@ class CustomViewBox(pg.ViewBox):
         self.shape_initial = None
         self.resize_start_pos = None
         self.dragging_control_point = None
+        if self.temp_line is not None:
+            self.removeItem(self.temp_line)
+            self.temp_line = None
         event.accept()
 
     def showCustomContextMenu(self, event):
