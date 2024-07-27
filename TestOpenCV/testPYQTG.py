@@ -27,6 +27,7 @@ class CustomViewBox(pg.ViewBox):
         self.shape_type = "dynamic_line"  # "rectangle", "ellipse", "polygon", "dynamic_line"
         self.polygon_points = []
         self.temp_line = None
+        self.clear_previous_lines = True  # Flag to control whether to clear previous lines
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -91,6 +92,10 @@ class CustomViewBox(pg.ViewBox):
             return
 
         if self.shape_type == "dynamic_line":
+            if self.clear_previous_lines and self.temp_line:
+                self.removeItem(self.temp_line)
+                self.temp_line = None
+
             if self.start_pos is None:
                 self.start_pos = view_pos
                 self.temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(self.start_pos, self.start_pos))
@@ -295,7 +300,7 @@ class CustomViewBox(pg.ViewBox):
 
     def invertImage(self):
         if self.image_data is not None:
-            inverted_image = 255 - self.image_data
+            inverted_image = 255 - self.image_data  # 简单地取反处理，假设是灰度图像
             self.image_data = inverted_image
             self.image_item.setImage(inverted_image)
 
