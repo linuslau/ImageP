@@ -21,7 +21,8 @@ class CustomViewBox(pg.ViewBox):
         self.dragging_control_point = None
         self.hovering_control_point = None
         self.setMenuEnabled(True)  # 启用右键菜单
-        self.use_rectangle = False  # 控制使用矩形还是椭圆
+        self.shape_type = "polygon"  # 控制绘制的形状：rectangle, ellipse, polygon
+        self.polygon_points = []
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -36,19 +37,22 @@ class CustomViewBox(pg.ViewBox):
             self.control_points = []
             return
 
-        rect = self.shape_item.rect()
-        x1, y1 = rect.topLeft().x(), rect.topLeft().y()
-        x2, y2 = rect.bottomRight().x(), rect.bottomRight().y()
-        self.control_points = [
-            QtCore.QPointF(x1, y1),  # Top-left
-            QtCore.QPointF(x2, y1),  # Top-right
-            QtCore.QPointF(x1, y2),  # Bottom-left
-            QtCore.QPointF(x2, y2),  # Bottom-right
-            QtCore.QPointF((x1 + x2) / 2, y1),  # Top-center
-            QtCore.QPointF((x1 + x2) / 2, y2),  # Bottom-center
-            QtCore.QPointF(x1, (y1 + y2) / 2),  # Left-center
-            QtCore.QPointF(x2, (y1 + y2) / 2)  # Right-center
-        ]
+        if self.shape_type == "polygon":
+            self.control_points = self.polygon_points
+        else:
+            rect = self.shape_item.rect()
+            x1, y1 = rect.topLeft().x(), rect.topLeft().y()
+            x2, y2 = rect.bottomRight().x(), rect.bottomRight().y()
+            self.control_points = [
+                QtCore.QPointF(x1, y1),  # Top-left
+                QtCore.QPointF(x2, y1),  # Top-right
+                QtCore.QPointF(x1, y2),  # Bottom-left
+                QtCore.QPointF(x2, y2),  # Bottom-right
+                QtCore.QPointF((x1 + x2) / 2, y1),  # Top-center
+                QtCore.QPointF((x1 + x2) / 2, y2),  # Bottom-center
+                QtCore.QPointF(x1, (y1 + y2) / 2),  # Left-center
+                QtCore.QPointF(x2, (y1 + y2) / 2)  # Right-center
+            ]
 
         for point in self.control_points:
             control_item = QtWidgets.QGraphicsEllipseItem(point.x() - 3, point.y() - 3, 6, 6)  # 控制点缩小到 6x6 像素
@@ -61,10 +65,24 @@ class CustomViewBox(pg.ViewBox):
         view_pos = self.mapToView(pos)
 
         if event.button() == QtCore.Qt.RightButton:
-            if self.shape_item is not None and self.shape_item.rect().contains(view_pos):
+            if self.shape_item is not None and self.shape_item.contains(view_pos):
                 self.showCustomContextMenu(event)
             else:
                 super().mousePressEvent(event)
+            return
+
+        if self.shape_type == "polygon":
+            if event.button() == QtCore.Qt.LeftButton:
+                self.polygon_points.append(view_pos)
+                if len(self.polygon_points) > 1:
+                    if self.shape_item is not None:
+                        self.removeItem(self.shape_item)
+                    self.shape_item = QtWidgets.QGraphicsPolygonItem(QtGui.QPolygonF(self.polygon_points))
+                    self.shape_item.setPen(pg.mkPen(color='r', width=2))
+                    self.addItem(self.shape_item)
+                self.updateControlPoints()
+            elif event.button() == QtCore.Qt.MiddleButton:
+                self.completePolygon()
             return
 
         if self.shape_item is not None:
@@ -88,9 +106,9 @@ class CustomViewBox(pg.ViewBox):
 
         if self.shape_item is None:
             self.start_pos = self.mapToView(pos)
-            if self.use_rectangle:
+            if self.shape_type == "rectangle":
                 self.shape_item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(self.start_pos, self.start_pos))
-            else:
+            elif self.shape_type == "ellipse":
                 self.shape_item = QtWidgets.QGraphicsEllipseItem(QtCore.QRectF(self.start_pos, self.start_pos))
             self.shape_item.setPen(pg.mkPen(color='r', width=2))
             self.addItem(self.shape_item)
@@ -98,9 +116,27 @@ class CustomViewBox(pg.ViewBox):
 
         event.accept()
 
+    def completePolygon(self):
+        if len(self.polygon_points) > 2:
+            self.polygon_points.append(self.polygon_points[0])
+            self.shape_item.setPolygon(QtGui.QPolygonF(self.polygon_points))
+        self.updateControlPoints()
+        self.polygon_points = []
+
     def mouseMoveEvent(self, event):
         if self.shape_item is not None and self.start_pos is not None:
             current_pos = self.mapToView(event.pos())
+
+            if self.shape_type == "polygon":
+                if len(self.polygon_points) > 0:
+                    temp_points = self.polygon_points + [current_pos]
+                    if self.shape_item is not None:
+                        self.removeItem(self.shape_item)
+                    self.shape_item = QtWidgets.QGraphicsPolygonItem(QtGui.QPolygonF(temp_points))
+                    self.shape_item.setPen(pg.mkPen(color='r', width=2))
+                    self.addItem(self.shape_item)
+                self.updateControlPoints()
+                return
 
             if self.dragging:
                 dx = current_pos.x() - self.start_pos.x()
@@ -191,9 +227,15 @@ class CustomViewBox(pg.ViewBox):
         if self.image_data is None or self.shape_item is None:
             return
 
-        rect = self.shape_item.rect()
-        x1, y1 = int(rect.left()), int(rect.top())
-        x2, y2 = int(rect.right()), int(rect.bottom())
+        if self.shape_type == "polygon":
+            polygon = self.shape_item.polygon()
+            bounding_rect = polygon.boundingRect()
+            x1, y1 = int(bounding_rect.left()), int(bounding_rect.top())
+            x2, y2 = int(bounding_rect.right()), int(bounding_rect.bottom())
+        else:
+            rect = self.shape_item.rect()
+            x1, y1 = int(rect.left()), int(rect.top())
+            x2, y2 = int(rect.right()), int(rect.bottom())
 
         x1, x2 = max(0, x1), min(self.image_data.shape[1], x2)
         y1, y2 = max(0, y1), min(self.image_data.shape[0], y2)
