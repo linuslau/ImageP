@@ -1,7 +1,9 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog
 from PyQt5.QtCore import Qt
-from pyqtgraph import PlotWidget, mkPen
+from PyQt5.QtGui import QImage
+import numpy as np
+from pyqtgraph import PlotWidget, mkPen, ImageItem
 import pyqtgraph as pg
 
 class DynamicLinePlot(QMainWindow):
@@ -16,12 +18,41 @@ class DynamicLinePlot(QMainWindow):
         self.dynamic_line = None
         self.lines = []
         self.initial_point = None
+        self.threshold = 20  # 设置适合图像处理应用的阈值
 
         self.plotWidget.plotItem.showGrid(True, True, 0.5)
         self.plotWidget.setBackground('w')
 
+        # 添加一个菜单栏，用于打开图片
+        openFile = QAction('Open Image', self)
+        openFile.triggered.connect(self.open_image)
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('File')
+        fileMenu.addAction(openFile)
+
         self.plotWidget.scene().sigMouseMoved.connect(self.mouse_moved)
         self.plotWidget.scene().sigMouseClicked.connect(self.mouse_clicked)
+
+    def open_image(self):
+        options = QFileDialog.Options()
+        fileName, _ = QFileDialog.getOpenFileName(self, "Open Image File", "", "Images (*.png *.xpm *.jpg *.bmp);;All Files (*)", options=options)
+        if fileName:
+            self.plotWidget.plotItem.clear()
+            image = QImage(fileName)
+            if image.isNull():
+                print(f"Failed to load image: {fileName}")
+                return
+            image = image.convertToFormat(QImage.Format.Format_RGB32)
+            width, height = image.width(), image.height()
+            ptr = image.bits()
+            ptr.setsize(image.byteCount())
+            arr = np.array(ptr).reshape((height, width, 4))
+            arr = arr[:, :, :3]  # Drop the alpha channel
+            arr = np.flip(arr, axis=0)  # Flip vertically
+
+            img_item = ImageItem(arr)
+            self.plotWidget.addItem(img_item)
+            print(f"Opened image: {fileName}")
 
     def mouse_clicked(self, event):
         if event.button() == Qt.LeftButton:
