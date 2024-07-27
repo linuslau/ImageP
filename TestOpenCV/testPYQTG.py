@@ -7,7 +7,6 @@ from pyqtgraph import PlotWidget, mkPen, ImageItem
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 
-
 class CustomViewBox(pg.ViewBox):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,7 +24,7 @@ class CustomViewBox(pg.ViewBox):
         self.dragging_control_point = None
         self.hovering_control_point = None
         self.setMenuEnabled(True)
-        self.shape_type = "dynamic_polygon"  # 默认选择 "dynamic_polygon"
+        self.shape_type = "dynamic_polygon"  # "rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"
         self.polygon_points = []
         self.temp_line = None
         self.dynamic_lines = []
@@ -209,8 +208,64 @@ class CustomViewBox(pg.ViewBox):
             return
 
     def mouseMoveEvent(self, event):
-        print("mouseMoveEvent")  # Debug information
-        self.on_mouse_move(event.pos())
+        print("mouseMoveEvent--------------------")
+        if self.start_pos is not None and self.shape_type != "dynamic_polygon":
+            current_pos = self.mapToView(event.pos())
+            print(f"Mouse moved to: {current_pos}")  # Debug information
+
+            if self.shape_type == "polygon":
+                if len(self.polygon_points) > 0:
+                    temp_points = self.polygon_points + [current_pos]
+                    if self.shape_item is not None:
+                        self.removeItem(self.shape_item)
+                    self.shape_item = QtWidgets.QGraphicsPolygonItem(QtGui.QPolygonF(temp_points))
+                    self.shape_item.setPen(pg.mkPen(color='r', width=2))
+                    self.addItem(self.shape_item)
+                self.updateControlPoints()
+                return
+
+            if self.shape_type == "dynamic_line":
+                if self.temp_line is not None:
+                    self.temp_line.setLine(QtCore.QLineF(self.start_pos, current_pos))
+                else:
+                    self.temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(self.start_pos, current_pos))
+                    self.temp_line.setPen(pg.mkPen(color='r', width=2))
+                    self.addItem(self.temp_line)
+                return
+
+            if self.dragging:
+                dx = current_pos.x() - self.start_pos.x()
+                dy = current_pos.y() - self.start_pos.y()
+                rect = self.shape_item.rect()
+                rect.moveTopLeft(QtCore.QPointF(rect.left() + dx, rect.top() + dy))
+                self.shape_item.setRect(rect)
+                self.start_pos = current_pos
+                self.updateControlPoints()
+            elif self.resizing and self.dragging_control_point is not None:
+                rect = self.shape_initial
+                if self.dragging_control_point == 0:  # Top-left
+                    rect.setTopLeft(current_pos)
+                elif self.dragging_control_point == 1:  # Top-right
+                    rect.setTopRight(current_pos)
+                elif self.dragging_control_point == 2:  # Bottom-left
+                    rect.setBottomLeft(current_pos)
+                elif self.dragging_control_point == 3:  # Bottom-right
+                    rect.setBottomRight(current_pos)
+                elif self.dragging_control_point == 4:  # Top-center
+                    rect.setTop(current_pos.y())
+                elif self.dragging_control_point == 5:  # Bottom-center
+                    rect.setBottom(current_pos.y())
+                elif self.dragging_control_point == 6:  # Left-center
+                    rect.setLeft(current_pos.x())
+                elif self.dragging_control_point == 7:  # Right-center
+                    rect.setRight(current_pos.x())
+
+                self.shape_item.setRect(rect)
+                self.updateControlPoints()
+            else:
+                rect = QtCore.QRectF(self.start_pos, current_pos).normalized()
+                self.shape_item.setRect(rect)
+                self.updateControlPoints()
         event.accept()
 
     def mouseReleaseEvent(self, event):
@@ -316,7 +371,7 @@ class CustomViewBox(pg.ViewBox):
 
     def invertImage(self):
         if self.image_data is not None:
-            inverted_image = 255 - self.image_data
+            inverted_image = 255 - self.image_data  # 简单地取反处理，假设是灰度图像
             self.image_data = inverted_image
             self.image_item.setImage(inverted_image)
 
