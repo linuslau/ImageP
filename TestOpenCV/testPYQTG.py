@@ -1,11 +1,11 @@
+# ImageP/TestOpenCV/testPYQTG.py
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog
+from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage
-import numpy as np
-from pyqtgraph import PlotWidget, mkPen, ImageItem
-import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
+import pyqtgraph as pg
+import numpy as np
+
 
 class CustomViewBox(pg.ViewBox):
     def __init__(self, *args, **kwargs):
@@ -191,7 +191,7 @@ class CustomViewBox(pg.ViewBox):
     def on_mouse_move(self, pos):
         scene_pos = pos  # Get the position in the scene coordinates
         current_pos = self.mapSceneToView(scene_pos)  # Convert scene coordinates to view coordinates
-        #print("on_mouse_move")
+        # print("on_mouse_move")
         if self.shape_type == "dynamic_polygon" and self.start_pos is not None:
             print(f"Mouse moved to: {current_pos}")  # Debug information
 
@@ -408,9 +408,31 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
         image = image.reshape(shape)
         return image
 
+def create_and_show_image_with_rect():
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+        created_app = True
+    else:
+        created_app = False
+
+    image_with_rect = ImageWithRect()
+
+    # Connect to main window signal if main window is present
+    main_window = QtWidgets.QApplication.instance().activeWindow()
+    if main_window:
+        main_window.icon_clicked.connect(lambda index: on_icon_clicked(index, image_with_rect.view))
+
+    image_with_rect.show()
+
+    if created_app:
+        sys.exit(app.exec_())
+
+def on_icon_clicked(index, view):
+    shape_types = ["rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"]
+    if 0 <= index < len(shape_types):
+        view.shape_type = shape_types[index]
+        print(f"Shape type set to: {shape_types[index]}")
 
 if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
-    win = ImageWithRect()
-    win.show()
-    sys.exit(app.exec_())
+    create_and_show_image_with_rect()

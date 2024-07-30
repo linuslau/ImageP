@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets, QtCore
 from ui.main_ui_qt5 import Ui_MainWindow
-from utils.menu_populate import populate_menu, populate_icons, load_menu_order
+from utils.menu_populate import populate_menu, populate_icons, load_menu_order, IconManager
 import sys
 import os
 
@@ -24,6 +24,8 @@ def handle_menu_click(file_path):
             window.show()
 
 class MainWindow(QtWidgets.QMainWindow):
+    icon_clicked = QtCore.pyqtSignal(int)
+
     def __init__(self):
         super().__init__()
         self.ui = Ui_MainWindow()
@@ -59,11 +61,18 @@ class MainWindow(QtWidgets.QMainWindow):
                     if (os.path.isdir(item_path) and item != '__pycache__') or (item.endswith('.py') and item != '__init__.py'):
                         add_menu_item(self.ui.menubar, item_path, os.path.isdir(item_path), self.ui.statusbar)
 
+        # Initialize IconManager
+        self.icon_manager = IconManager()
+        self.icon_manager.icon_clicked.connect(self.on_icon_clicked)
+
         # Check if the icons directory exists
         if os.path.exists(icons_path) and os.path.isdir(icons_path):
-            populate_icons(self.ui.toolBar, icons_path, self.ui.statusbar)
+            populate_icons(self.ui.toolBar, icons_path, self.ui.statusbar, self.icon_manager)
 
         self.ui.statusbar.showMessage("Welcome to use ImageP")
+
+    def on_icon_clicked(self, index):
+        self.icon_clicked.emit(index)
 
     def leaveEvent(self, event):
         self.ui.statusbar.showMessage("Welcome to use ImageP")

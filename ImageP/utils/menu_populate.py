@@ -1,10 +1,95 @@
+# ImageP/ImageP/utils/menu_populate.py
 import os
 from PyQt5.QtWidgets import QAction
 from PyQt5.QtGui import QIcon, QPixmap, QKeySequence
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal, QObject
 
-current_clicked_action = None  # Global variable to track the currently clicked icon
-original_icons = {}  # Dictionary to store original icons
+class IconManager(QObject):
+    icon_clicked = pyqtSignal(int)  # Signal to notify icon index
+
+    def __init__(self):
+        super().__init__()
+        self.current_clicked_action = None
+        self.original_icons = {}
+        self.icon_actions = []
+
+    def add_icon_action(self, toolbar, icon_path, status_bar):
+        if not os.path.isdir(icon_path):
+            return
+        folder_name = os.path.basename(icon_path)
+        short_name = folder_name[:4]  # Get the first 4 characters of the folder name
+        action = QAction(short_name, toolbar)
+        self.icon_actions.append(action)
+
+        # Check for image and Python files
+        image_file = os.path.join(icon_path, 'image.jpg')
+        py_file = os.path.join(icon_path, 'image.py')
+
+        if os.path.exists(image_file) and os.path.exists(py_file):
+            pixmap = QPixmap(image_file)
+            if not pixmap.isNull():
+                size = max(pixmap.width(), pixmap.height())
+                icon = QIcon(pixmap.scaled(size, size))
+                action.setIcon(icon)
+                self.original_icons[action] = icon
+                action.triggered.connect(lambda checked=False, path=py_file, act=action: self.handle_icon_click(path, act))
+        else:
+            # If no image or Python file, set a default icon and no action
+            default_icon = QIcon()  # You can set a default icon here if you have one
+            action.setIcon(default_icon)
+            action.triggered.connect(lambda: None)
+
+        action.hovered.connect(lambda: status_bar.showMessage(os.path.basename(icon_path)))
+        toolbar.addAction(action)
+
+    def handle_icon_click(self, py_file, action):
+        relative_path = os.path.relpath(py_file, os.path.join(os.path.dirname(__file__), '..'))
+        module_name = relative_path.replace(os.path.sep, '.').replace('.py', '')
+
+        try:
+            # If there is a previously clicked action, restore its color
+            if self.current_clicked_action and self.current_clicked_action != action:
+                self.restore_icon_color(self.current_clicked_action)
+
+            # If the current action is clicked again, toggle its color
+            if self.current_clicked_action == action:
+                self.restore_icon_color(action)
+                self.current_clicked_action = None
+            else:
+                self.gray_out_icon(action)
+                self.current_clicked_action = action
+
+            # Emit the signal with the index of the clicked action
+            index = self.icon_actions.index(action)
+            self.icon_clicked.emit(index)
+
+            module_spec = __import__(module_name, fromlist=[module_name])
+            if hasattr(module_spec, 'handle_click'):
+                module_spec.handle_click()
+            if hasattr(module_spec, 'menu_click'):
+                module_spec.menu_click()
+        except ModuleNotFoundError as e:
+            print(f"Module not found: {e}")
+        except Exception as e:
+            print(f"Error while handling icon click: {e}")
+
+    def gray_out_icon(self, action):
+        icon = action.icon()
+        pixmap = icon.pixmap(32, 32)
+        image = pixmap.toImage()
+        for i in range(image.width()):
+            for j in range(image.height()):
+                color = image.pixelColor(i, j)
+                gray = int(color.red() * 0.3 + color.green() * 0.59 + color.blue() * 0.11)
+                color.setRed(gray)
+                color.setGreen(gray)
+                color.setBlue(gray)
+                image.setPixelColor(i, j, color)
+        action.setIcon(QIcon(QPixmap.fromImage(image)))
+
+    def restore_icon_color(self, action):
+        if action in self.original_icons:
+            action.setIcon(self.original_icons[action])
 
 
 def load_menu_order(menu_path):
@@ -33,7 +118,7 @@ def load_icon(file_path):
     return None
 
 
-def populate_icons(toolbar, icons_path, status_bar):
+def populate_icons(toolbar, icons_path, status_bar, icon_manager):
     items = os.listdir(icons_path)
     ordered_items = load_menu_order(icons_path)
     combined_items = ordered_items + [item for item in items if item not in ordered_items]
@@ -41,7 +126,7 @@ def populate_icons(toolbar, icons_path, status_bar):
     for item in combined_items:
         item_path = os.path.join(icons_path, item)
         if os.path.isdir(item_path):
-            add_icon_action(toolbar, item_path, status_bar)
+            icon_manager.add_icon_action(toolbar, item_path, status_bar)
 
 
 def populate_menu(menu, folder_path, status_bar):
@@ -82,36 +167,6 @@ def populate_menu(menu, folder_path, status_bar):
             menu.addAction(action)
 
 
-def add_icon_action(toolbar, icon_path, status_bar):
-    global current_clicked_action, original_icons
-    if not os.path.isdir(icon_path):
-        return
-    folder_name = os.path.basename(icon_path)
-    short_name = folder_name[:4]  # Get the first 4 characters of the folder name
-    action = QAction(short_name, toolbar)
-
-    # Check for image and Python files
-    image_file = os.path.join(icon_path, 'image.jpg')
-    py_file = os.path.join(icon_path, 'image.py')
-
-    if os.path.exists(image_file) and os.path.exists(py_file):
-        pixmap = QPixmap(image_file)
-        if not pixmap.isNull():
-            size = max(pixmap.width(), pixmap.height())
-            icon = QIcon(pixmap.scaled(size, size))
-            action.setIcon(icon)
-            original_icons[action] = icon
-            action.triggered.connect(lambda checked=False, path=py_file, act=action: handle_icon_click(path, act))
-    else:
-        # If no image or Python file, set a default icon and no action
-        default_icon = QIcon()  # You can set a default icon here if you have one
-        action.setIcon(default_icon)
-        action.triggered.connect(lambda: None)
-
-    action.hovered.connect(lambda: status_bar.showMessage(os.path.basename(icon_path)))
-    toolbar.addAction(action)
-
-
 def handle_menu_click(file_path):
     relative_path = os.path.relpath(file_path, os.path.join(os.path.dirname(__file__), '..'))
     module_name = relative_path.replace(os.path.sep, '.').replace('.py', '')
@@ -125,53 +180,3 @@ def handle_menu_click(file_path):
         print(f"Module not found: {e}")
     except Exception as e:
         print(f"Error while handling menu click: {e}")
-
-
-def handle_icon_click(py_file, action):
-    global current_clicked_action, original_icons
-    relative_path = os.path.relpath(py_file, os.path.join(os.path.dirname(__file__), '..'))
-    module_name = relative_path.replace(os.path.sep, '.').replace('.py', '')
-
-    try:
-        # If there is a previously clicked action, restore its color
-        if current_clicked_action and current_clicked_action != action:
-            restore_icon_color(current_clicked_action)
-
-        # If the current action is clicked again, toggle its color
-        if current_clicked_action == action:
-            restore_icon_color(action)
-            current_clicked_action = None
-        else:
-            gray_out_icon(action)
-            current_clicked_action = action
-
-        module_spec = __import__(module_name, fromlist=[module_name])
-        if hasattr(module_spec, 'handle_click'):
-            module_spec.handle_click()
-        if hasattr(module_spec, 'menu_click'):
-            module_spec.menu_click()
-    except ModuleNotFoundError as e:
-        print(f"Module not found: {e}")
-    except Exception as e:
-        print(f"Error while handling icon click: {e}")
-
-
-def gray_out_icon(action):
-    icon = action.icon()
-    pixmap = icon.pixmap(32, 32)
-    image = pixmap.toImage()
-    for i in range(image.width()):
-        for j in range(image.height()):
-            color = image.pixelColor(i, j)
-            gray = int(color.red() * 0.3 + color.green() * 0.59 + color.blue() * 0.11)
-            color.setRed(gray)
-            color.setGreen(gray)
-            color.setBlue(gray)
-            image.setPixelColor(i, j, color)
-    action.setIcon(QIcon(QPixmap.fromImage(image)))
-
-
-def restore_icon_color(action):
-    global original_icons
-    if action in original_icons:
-        action.setIcon(original_icons[action])
