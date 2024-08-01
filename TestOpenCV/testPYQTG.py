@@ -92,7 +92,7 @@ class CustomViewBox(pg.ViewBox):
             return
 
         # Clear existing lines before starting a new one
-        if self.shape_type != "polygon":
+        if self.shape_type != "polygon" and self.shape_type != "dynamic_polygon" :
             self.clear_lines()
 
         if self.shape_type == "polygon":
