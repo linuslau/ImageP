@@ -24,7 +24,7 @@ class CustomViewBox(pg.ViewBox):
         self.dragging_control_point = None
         self.hovering_control_point = None
         self.setMenuEnabled(True)
-        self.shape_type = "dynamic_polygon"  # "rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"
+        self.shape_type = "rectangle"  # "rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"
         self.polygon_points = []
         self.temp_line = None
         self.dynamic_lines = []
@@ -67,6 +67,17 @@ class CustomViewBox(pg.ViewBox):
             self.addItem(control_item)
             self.control_items.append(control_item)
 
+    def clear_lines(self):
+        """清除所有绘制的线条"""
+        for item in self.dynamic_lines:
+            self.removeItem(item)
+        self.dynamic_lines.clear()
+        self.polygon_points.clear()
+        if self.shape_item:
+            self.removeItem(self.shape_item)
+            self.shape_item = None
+        self.updateControlPoints()
+
     def mousePressEvent(self, event):
         pos = event.pos()
         view_pos = self.mapToView(pos)
@@ -78,6 +89,10 @@ class CustomViewBox(pg.ViewBox):
             else:
                 super().mousePressEvent(event)
             return
+
+        # Clear existing lines before starting a new one
+        if self.shape_type != "polygon":
+            self.clear_lines()
 
         if self.shape_type == "polygon":
             if event.button() == QtCore.Qt.LeftButton:
@@ -429,9 +444,10 @@ def create_and_show_image_with_rect():
         sys.exit(app.exec_())
 
 def on_icon_clicked(index, view):
-    shape_types = ["rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"]
+    shape_types = ["rectangle", "ellipse", "polygon", "dynamic_polygon", "dynamic_line", "dynamic_line"]
     if 0 <= index < len(shape_types):
         view.shape_type = shape_types[index]
+        view.clear_lines()  # Clear lines when switching shapes
         print(f"Shape type set to: {shape_types[index]}")
 
 if __name__ == '__main__':
