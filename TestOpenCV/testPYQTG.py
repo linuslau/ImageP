@@ -1,4 +1,3 @@
-# ImageP/TestOpenCV/testPYQTG.py
 import sys
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
@@ -100,13 +99,16 @@ class CustomViewBox(pg.ViewBox):
         if self.shape_type == "polygon":
             if event.button() == QtCore.Qt.LeftButton:
                 self.polygon_points.append(view_pos)
+                control_item = QtWidgets.QGraphicsEllipseItem(view_pos.x() - 3, view_pos.y() - 3, 6, 6)
+                control_item.setBrush(pg.mkBrush('w'))
+                self.addItem(control_item)
+                self.control_items.append(control_item)
                 if len(self.polygon_points) > 1:
                     if self.shape_item is not None:
                         self.removeItem(self.shape_item)
                     self.shape_item = QtWidgets.QGraphicsPolygonItem(QtGui.QPolygonF(self.polygon_points))
                     self.shape_item.setPen(pg.mkPen(color='r', width=2))
                     self.addItem(self.shape_item)
-                self.updateControlPoints()
             elif event.button() == QtCore.Qt.MiddleButton:
                 self.completePolygon()
             return
@@ -137,7 +139,7 @@ class CustomViewBox(pg.ViewBox):
                     self.dynamic_lines.append(
                         QtWidgets.QGraphicsEllipseItem(new_point[0] - 3, new_point[1] - 3, 6, 6)
                     )
-                    self.dynamic_lines[-1].setBrush(pg.mkBrush('r'))  # 设置控制点颜色为红色
+                    self.dynamic_lines[-1].setBrush(pg.mkBrush('w'))  # 设置控制点颜色为红色
                     self.addItem(self.dynamic_lines[-1])
                     print(f"Initial point set: {self.initial_point}")
                 else:
