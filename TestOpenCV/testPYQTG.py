@@ -191,6 +191,8 @@ class CustomViewBox(pg.ViewBox):
                 self.shape_item = QtWidgets.QGraphicsEllipseItem(QtCore.QRectF(self.start_pos, self.start_pos))
             self.shape_item.setPen(pg.mkPen(color='r', width=2))
             self.addItem(self.shape_item)
+            if self.shape_type not in ["rectangle", "ellipse"]:
+                self.updateControlPoints()
 
         event.accept()
 
@@ -283,12 +285,12 @@ class CustomViewBox(pg.ViewBox):
         event.accept()
 
     def mouseReleaseEvent(self, event):
-        if not self.moved:
-            if self.shape_item is not None:
-                self.removeItem(self.shape_item)
-                self.shape_item = None
-            self.updateControlPoints()
         if self.shape_type in ["rectangle", "ellipse"]:
+            if not self.moved:
+                if self.shape_item is not None:
+                    self.removeItem(self.shape_item)
+                    self.shape_item = None
+            self.updateControlPoints()
             self.start_pos = None
             self.dragging = False
             self.resizing = False
