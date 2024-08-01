@@ -47,15 +47,13 @@ class IconManager(QObject):
         module_name = relative_path.replace(os.path.sep, '.').replace('.py', '')
 
         try:
-            # If there is a previously clicked action, restore its color
-            if self.current_clicked_action and self.current_clicked_action != action:
-                self.restore_icon_color(self.current_clicked_action)
-
-            # If the current action is clicked again, toggle its color
+            # If the current action is clicked again, keep its gray color
             if self.current_clicked_action == action:
-                self.restore_icon_color(action)
-                self.current_clicked_action = None
+                print(f"Shape type {module_name} already selected and remains grey.")
             else:
+                # If there is a previously clicked action, restore its color
+                if self.current_clicked_action:
+                    self.restore_icon_color(self.current_clicked_action)
                 self.gray_out_icon(action)
                 self.current_clicked_action = action
 
