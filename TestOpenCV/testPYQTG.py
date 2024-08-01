@@ -92,7 +92,7 @@ class CustomViewBox(pg.ViewBox):
             return
 
         # Clear existing lines before starting a new one
-        # if self.shape_type != "polygon" and self.shape_type != "dynamic_polygon":
+        # if self.shape_type != "polygon" and self.shape_type != "dynamic_polygon" :
             # self.clear_lines()
 
         if self.shape_type == "polygon":
@@ -110,10 +110,6 @@ class CustomViewBox(pg.ViewBox):
             return
 
         if self.shape_type == "dynamic_line":
-            if self.clear_previous_lines and self.temp_line:
-                self.removeItem(self.temp_line)
-                self.temp_line = None
-
             if self.start_pos is None:
                 self.start_pos = view_pos
                 self.temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(self.start_pos, self.start_pos))
@@ -453,10 +449,13 @@ def on_icon_clicked(index, view):
             view.shape_type = shape_types[index]
             view.clear_lines()  # Clear lines when switching shapes
             view.current_index = index
-            print(f"Shape type set to: {shape_types[index]}")
             if view.shape_type == "dynamic_polygon":
                 view.start_pos = None
                 view.initial_point = None
+            elif view.shape_type == "dynamic_line":
+                view.start_pos = None
+                view.temp_line = None
+            print(f"Shape type set to: {shape_types[index]}")
 
 if __name__ == '__main__':
     create_and_show_image_with_rect()
