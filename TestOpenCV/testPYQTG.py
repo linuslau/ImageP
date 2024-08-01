@@ -31,6 +31,7 @@ class CustomViewBox(pg.ViewBox):
         self.clear_previous_lines = False  # Flag to control whether to clear previous lines
         self.temp_dynamic_line = None
         self.current_index = -1
+        self.moved = False  # Track if the mouse has moved
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -82,6 +83,7 @@ class CustomViewBox(pg.ViewBox):
     def mousePressEvent(self, event):
         pos = event.pos()
         view_pos = self.mapToView(pos)
+        self.moved = False  # Reset moved flag
         print(f"Mouse pressed at: {view_pos}, Button: {event.button()}")  # Debug information
 
         if event.button() == QtCore.Qt.RightButton:
@@ -189,7 +191,6 @@ class CustomViewBox(pg.ViewBox):
                 self.shape_item = QtWidgets.QGraphicsEllipseItem(QtCore.QRectF(self.start_pos, self.start_pos))
             self.shape_item.setPen(pg.mkPen(color='r', width=2))
             self.addItem(self.shape_item)
-            self.updateControlPoints()
 
         event.accept()
 
@@ -220,6 +221,7 @@ class CustomViewBox(pg.ViewBox):
             return
 
     def mouseMoveEvent(self, event):
+        self.moved = True  # Set moved flag to True when mouse is moved
         print("mouseMoveEvent--------------------")
         if self.start_pos is not None and self.shape_type != "dynamic_polygon":
             current_pos = self.mapToView(event.pos())
@@ -281,6 +283,11 @@ class CustomViewBox(pg.ViewBox):
         event.accept()
 
     def mouseReleaseEvent(self, event):
+        if not self.moved:
+            if self.shape_item is not None:
+                self.removeItem(self.shape_item)
+                self.shape_item = None
+            self.updateControlPoints()
         event.accept()
 
     def is_close_to_initial_point(self, point, threshold=20):
