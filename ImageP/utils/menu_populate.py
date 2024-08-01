@@ -89,6 +89,13 @@ class IconManager(QObject):
         if action in self.original_icons:
             action.setIcon(self.original_icons[action])
 
+    def gray_out_first_icon(self):
+        if self.icon_actions:
+            first_action = self.icon_actions[0]
+            self.gray_out_icon(first_action)
+            self.current_clicked_action = first_action
+            self.icon_clicked.emit(0)
+
 
 def load_menu_order(menu_path):
     order_file_path = os.path.join(menu_path, 'order.txt')
@@ -125,6 +132,8 @@ def populate_icons(toolbar, icons_path, status_bar, icon_manager):
         item_path = os.path.join(icons_path, item)
         if os.path.isdir(item_path):
             icon_manager.add_icon_action(toolbar, item_path, status_bar)
+
+    icon_manager.gray_out_first_icon()
 
 
 def populate_menu(menu, folder_path, status_bar):
