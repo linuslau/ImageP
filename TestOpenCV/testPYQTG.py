@@ -30,6 +30,7 @@ class CustomViewBox(pg.ViewBox):
         self.dynamic_lines = []
         self.clear_previous_lines = False  # Flag to control whether to clear previous lines
         self.temp_dynamic_line = None
+        self.current_index = -1
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -446,9 +447,13 @@ def create_and_show_image_with_rect():
 def on_icon_clicked(index, view):
     shape_types = ["rectangle", "ellipse", "polygon", "dynamic_polygon", "dynamic_line", "dynamic_line"]
     if 0 <= index < len(shape_types):
-        view.shape_type = shape_types[index]
-        view.clear_lines()  # Clear lines when switching shapes
-        print(f"Shape type set to: {shape_types[index]}")
+        if view.current_index == index:
+            print(f"Shape type {shape_types[index]} already selected and remains grey.")
+        else:
+            view.shape_type = shape_types[index]
+            view.clear_lines()  # Clear lines when switching shapes
+            view.current_index = index
+            print(f"Shape type set to: {shape_types[index]}")
 
 if __name__ == '__main__':
     create_and_show_image_with_rect()
