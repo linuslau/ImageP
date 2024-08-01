@@ -288,6 +288,13 @@ class CustomViewBox(pg.ViewBox):
                 self.removeItem(self.shape_item)
                 self.shape_item = None
             self.updateControlPoints()
+        if self.shape_type in ["rectangle", "ellipse"]:
+            self.start_pos = None
+            self.dragging = False
+            self.resizing = False
+            self.shape_initial = None
+            self.resize_start_pos = None
+            self.dragging_control_point = None
         event.accept()
 
     def is_close_to_initial_point(self, point, threshold=20):
