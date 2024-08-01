@@ -92,7 +92,7 @@ class CustomViewBox(pg.ViewBox):
             return
 
         # Clear existing lines before starting a new one
-        if self.shape_type != "polygon" and self.shape_type != "dynamic_polygon" :
+        if self.shape_type != "polygon" and self.shape_type != "dynamic_polygon":
             self.clear_lines()
 
         if self.shape_type == "polygon":
@@ -445,7 +445,7 @@ def create_and_show_image_with_rect():
         sys.exit(app.exec_())
 
 def on_icon_clicked(index, view):
-    shape_types = ["rectangle", "ellipse", "polygon", "dynamic_polygon", "dynamic_line", "dynamic_line"]
+    shape_types = ["rectangle", "ellipse", "polygon", "dynamic_polygon", "dynamic_line"]
     if 0 <= index < len(shape_types):
         if view.current_index == index:
             print(f"Shape type {shape_types[index]} already selected and remains grey.")
@@ -454,6 +454,9 @@ def on_icon_clicked(index, view):
             view.clear_lines()  # Clear lines when switching shapes
             view.current_index = index
             print(f"Shape type set to: {shape_types[index]}")
+            if view.shape_type == "dynamic_polygon":
+                view.start_pos = None
+                view.initial_point = None
 
 if __name__ == '__main__':
     create_and_show_image_with_rect()
