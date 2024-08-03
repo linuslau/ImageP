@@ -1,6 +1,8 @@
 from TestOpenCV.testPYQTG import create_and_show_image_with_rect
 
-def main():
+def handle_click():
     create_and_show_image_with_rect()
 
-main()
+# def main():
+#    create_and_show_image_with_rect()
+# main()
