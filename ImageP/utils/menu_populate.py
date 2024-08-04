@@ -1,4 +1,3 @@
-# ImageP/ImageP/utils/menu_populate.py
 import os
 from PyQt5.QtWidgets import QAction
 from PyQt5.QtGui import QIcon, QPixmap, QKeySequence
@@ -150,6 +149,12 @@ def populate_menu(menu, folder_path, status_bar):
             continue
         if os.path.isdir(item_path):
             sub_menu = menu.addMenu(item)
+
+            # Load sub-menu icon
+            icon = load_icon(item_path)
+            if icon:
+                sub_menu.setIcon(icon)
+
             populate_menu(sub_menu, item_path, status_bar)
         elif item.endswith('.py') and item != '__init__.py':
             action_text = item.replace('.py', '')
