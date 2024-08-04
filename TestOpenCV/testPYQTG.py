@@ -23,7 +23,7 @@ class CustomViewBox(pg.ViewBox):
         self.dragging_control_point = None
         self.hovering_control_point = None
         self.setMenuEnabled(True)
-        self.shape_type = "rectangle"  # "rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"
+        self.shape_type = "dynamic_line"  # "rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"
         self.polygon_points = []
         self.temp_line = None
         self.dynamic_lines = []
@@ -31,6 +31,7 @@ class CustomViewBox(pg.ViewBox):
         self.temp_dynamic_line = None
         self.current_index = -1
         self.moved = False  # Track if the mouse has moved
+        self.dragging_line = False
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -47,6 +48,15 @@ class CustomViewBox(pg.ViewBox):
 
         if self.shape_type in ["polygon", "dynamic_polygon"]:
             self.control_points = self.polygon_points
+        elif self.shape_type == "dynamic_line":
+            line = self.shape_item.line()
+            p1 = line.p1()
+            p2 = line.p2()
+            self.control_points = [
+                p1,
+                p2,
+                QtCore.QPointF((p1.x() + p2.x()) / 2, (p1.y() + p2.y()) / 2)
+            ]
         else:
             rect = self.shape_item.rect()
             x1, y1 = rect.topLeft().x(), rect.topLeft().y()
@@ -92,10 +102,6 @@ class CustomViewBox(pg.ViewBox):
                 super().mousePressEvent(event)
             return
 
-        # Clear existing lines before starting a new one
-        # if self.shape_type != "polygon" and self.shape_type != "dynamic_polygon" :
-            # self.clear_lines()
-
         if self.shape_type == "polygon":
             if event.button() == QtCore.Qt.LeftButton:
                 self.polygon_points.append(view_pos)
@@ -114,6 +120,15 @@ class CustomViewBox(pg.ViewBox):
             return
 
         if self.shape_type == "dynamic_line":
+            for i, point in enumerate(self.control_points):
+                if (point - view_pos).manhattanLength() < 10:
+                    self.dragging_control_point = i
+                    self.start_pos = view_pos
+                    if i == 2:
+                        self.dragging_line = True
+                    event.accept()
+                    return
+
             if self.start_pos is None:
                 self.start_pos = view_pos
                 self.temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(self.start_pos, self.start_pos))
@@ -243,12 +258,26 @@ class CustomViewBox(pg.ViewBox):
                 return
 
             if self.shape_type == "dynamic_line":
-                if self.temp_line is not None:
-                    self.temp_line.setLine(QtCore.QLineF(self.start_pos, current_pos))
+                if self.dragging_control_point is not None:
+                    line = self.shape_item.line()
+                    if self.dragging_control_point == 0:
+                        line.setP1(current_pos)
+                    elif self.dragging_control_point == 1:
+                        line.setP2(current_pos)
+                    elif self.dragging_control_point == 2:
+                        dx = current_pos.x() - self.start_pos.x()
+                        dy = current_pos.y() - self.start_pos.y()
+                        line.translate(dx, dy)
+                        self.start_pos = current_pos
+                    self.shape_item.setLine(line)
+                    self.updateControlPoints()
                 else:
-                    self.temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(self.start_pos, current_pos))
-                    self.temp_line.setPen(pg.mkPen(color='r', width=2))
-                    self.addItem(self.temp_line)
+                    if self.temp_line is not None:
+                        self.temp_line.setLine(QtCore.QLineF(self.start_pos, current_pos))
+                    else:
+                        self.temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(self.start_pos, current_pos))
+                        self.temp_line.setPen(pg.mkPen(color='r', width=2))
+                        self.addItem(self.temp_line)
                 return
 
             if self.dragging:
@@ -287,6 +316,11 @@ class CustomViewBox(pg.ViewBox):
         event.accept()
 
     def mouseReleaseEvent(self, event):
+        if self.shape_type == "dynamic_line":
+            if self.temp_line is not None:
+                self.shape_item = self.temp_line
+                self.temp_line = None
+            self.updateControlPoints()
         if self.shape_type in ["rectangle", "ellipse"]:
             if not self.moved:
                 if self.shape_item is not None:
