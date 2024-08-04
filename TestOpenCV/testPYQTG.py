@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QVBoxLayout, QLabel, QWidget
 from PyQt5.QtCore import Qt
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
@@ -454,15 +454,26 @@ class CustomViewBox(pg.ViewBox):
             self.image_item.setImage(inverted_image)
 
 
-class ImageWithRect(pg.GraphicsLayoutWidget):
+class ImageWithRect(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('PyQtGraph Example: Image with Rectangle')
+
+        self.layout = QVBoxLayout(self)
+        self.graphics_widget = pg.GraphicsLayoutWidget()
+
         self.view = CustomViewBox()
         self.view.setAspectLocked(True)
 
         self.plot_item = pg.PlotItem(viewBox=self.view)
-        self.addItem(self.plot_item)
+        self.graphics_widget.addItem(self.plot_item)
+
+        self.label = QLabel()
+        self.label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self.label.setStyleSheet("background-color: black; color: white;")
+
+        self.layout.addWidget(self.graphics_widget)
+        self.layout.addWidget(self.label)
 
         image_path = 'boats_720x576_8bits.raw'
         image = self.load_raw_image(image_path, (576, 720))
@@ -480,11 +491,21 @@ class ImageWithRect(pg.GraphicsLayoutWidget):
 
     def on_mouse_move(self, pos):
         self.view.on_mouse_move(pos)
+        self.update_label(pos)
+
+    def update_label(self, pos):
+        pos = self.view.mapSceneToView(pos)
+        i, j = int(pos.y()), int(pos.x())
+        i = np.clip(i, 0, self.view.image_data.shape[0] - 1)
+        j = np.clip(j, 0, self.view.image_data.shape[1] - 1)
+        val = self.view.image_data[i, j]
+        self.label.setText(f"pos: ({pos.x():.1f}, {pos.y():.1f})  pixel: ({i}, {j})  value: {val:.4f}")
 
     def load_raw_image(self, file_path, shape):
         image = np.fromfile(file_path, dtype=np.uint8)
         image = image.reshape(shape)
         return image
+
 
 def create_and_show_image_with_rect():
     app = QApplication.instance()
@@ -505,6 +526,7 @@ def create_and_show_image_with_rect():
 
     if created_app:
         sys.exit(app.exec_())
+
 
 def on_icon_clicked(index, view):
     shape_types = ["rectangle", "ellipse", "polygon", "dynamic_polygon", "dynamic_line", "dynamic_line"]
@@ -528,6 +550,7 @@ def on_icon_clicked(index, view):
                 view.start_pos = None
                 view.temp_line = None
             print(f"Shape type set to: {shape_types[index]}")
+
 
 if __name__ == '__main__':
     create_and_show_image_with_rect()
