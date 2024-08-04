@@ -23,7 +23,7 @@ class CustomViewBox(pg.ViewBox):
         self.dragging_control_point = None
         self.hovering_control_point = None
         self.setMenuEnabled(True)
-        self.shape_type = "dynamic_line"  # "rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"
+        self.shape_type = "rectangle"  # "rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"
         self.polygon_points = []
         self.temp_line = None
         self.dynamic_lines = []
@@ -101,6 +101,9 @@ class CustomViewBox(pg.ViewBox):
             else:
                 super().mousePressEvent(event)
             return
+
+        if self.clear_previous_lines:
+            self.clear_lines()
 
         if self.shape_type == "polygon":
             if event.button() == QtCore.Qt.LeftButton:
@@ -496,7 +499,7 @@ def create_and_show_image_with_rect():
         sys.exit(app.exec_())
 
 def on_icon_clicked(index, view):
-    shape_types = ["rectangle", "ellipse", "polygon", "dynamic_polygon", "dynamic_line"]
+    shape_types = ["rectangle", "ellipse", "polygon", "dynamic_polygon", "dynamic_line", "dynamic_line"]
     if 0 <= index < len(shape_types):
         if view.current_index == index:
             print(f"Shape type {shape_types[index]} already selected and remains grey.")
@@ -508,6 +511,10 @@ def on_icon_clicked(index, view):
                 view.start_pos = None
                 view.initial_point = None
             elif view.shape_type == "dynamic_line":
+                if index == 5:
+                    view.clear_previous_lines = True
+                else:
+                    view.clear_previous_lines = False
                 view.start_pos = None
                 view.temp_line = None
             print(f"Shape type set to: {shape_types[index]}")
