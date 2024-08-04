@@ -4,9 +4,10 @@ from PyQt5.QtCore import Qt
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
-
+import os  # Import os to work with file paths
 
 class CustomViewBox(pg.ViewBox):
+    # Your existing CustomViewBox class implementation
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setMouseMode(self.RectMode)
@@ -110,15 +111,7 @@ class CustomViewBox(pg.ViewBox):
                 super().mousePressEvent(event)
             return
 
-        # Check if near a control point in dynamic_line mode
-        near_control_point = False
-        if self.shape_type == "dynamic_line":
-            for point in self.control_points:
-                if (point - view_pos).manhattanLength() < 10:
-                    near_control_point = True
-                    break
-
-        if self.clear_previous_lines and not near_control_point:
+        if self.clear_previous_lines:
             self.clear_lines()
 
         if self.shape_type == "polygon":
@@ -465,10 +458,10 @@ class CustomViewBox(pg.ViewBox):
 class ImageWithRect(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('PyQtGraph Example: Image with Rectangle')
 
-        self.layout = QVBoxLayout(self)
         self.graphics_widget = pg.GraphicsLayoutWidget()
+        self.layout = QVBoxLayout(self)
+        self.layout.addWidget(self.graphics_widget)
 
         self.view = CustomViewBox()
         self.view.setAspectLocked(True)
@@ -480,11 +473,10 @@ class ImageWithRect(QWidget):
         self.label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.label.setStyleSheet("background-color: black; color: white;")
 
-        self.layout.addWidget(self.graphics_widget)
         self.layout.addWidget(self.label)
 
-        image_path = 'boats_720x576_8bits.raw'
-        image = self.load_raw_image(image_path, (576, 720))
+        self.image_path = 'boats_720x576_8bits.raw'
+        image = self.load_raw_image(self.image_path, (576, 720))
         image = np.rot90(image, k=3)
 
         self.img = pg.ImageItem(image)
@@ -492,6 +484,7 @@ class ImageWithRect(QWidget):
 
         self.plot_item.addItem(self.img)
 
+        self.setWindowTitle(os.path.basename(self.image_path))  # Set window title to file name
         self.resize(1600, 1200)
 
         # Connect mouse move signal
