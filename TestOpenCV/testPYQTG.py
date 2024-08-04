@@ -129,7 +129,7 @@ class CustomViewBox(pg.ViewBox):
                     event.accept()
                     return
 
-            if self.start_pos is None:
+            if not self.dragging_line:
                 self.start_pos = view_pos
                 self.temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(self.start_pos, self.start_pos))
                 self.temp_line.setPen(pg.mkPen(color='r', width=2))
@@ -321,6 +321,9 @@ class CustomViewBox(pg.ViewBox):
                 self.shape_item = self.temp_line
                 self.temp_line = None
             self.updateControlPoints()
+            self.start_pos = None
+            self.dragging_control_point = None
+            self.dragging_line = False
         if self.shape_type in ["rectangle", "ellipse"]:
             if not self.moved:
                 if self.shape_item is not None:
