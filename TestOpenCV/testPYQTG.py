@@ -80,8 +80,10 @@ class CustomViewBox(pg.ViewBox):
 
     def clear_lines(self):
         """清除所有绘制的线条"""
-        for item in self.dynamic_lines:
-            self.removeItem(item)
+        items = self.allChildItems()
+        for item in items:
+            if isinstance(item, QtWidgets.QGraphicsLineItem) or isinstance(item, QtWidgets.QGraphicsEllipseItem):
+                self.removeItem(item)
         self.dynamic_lines.clear()
         self.polygon_points.clear()
         if self.shape_item:
