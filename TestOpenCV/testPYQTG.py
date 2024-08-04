@@ -110,7 +110,15 @@ class CustomViewBox(pg.ViewBox):
                 super().mousePressEvent(event)
             return
 
-        if self.clear_previous_lines:
+        # Check if near a control point in dynamic_line mode
+        near_control_point = False
+        if self.shape_type == "dynamic_line":
+            for point in self.control_points:
+                if (point - view_pos).manhattanLength() < 10:
+                    near_control_point = True
+                    break
+
+        if self.clear_previous_lines and not near_control_point:
             self.clear_lines()
 
         if self.shape_type == "polygon":
