@@ -24,6 +24,7 @@ class CustomViewBox(pg.ViewBox):
         self.hovering_control_point = None
         self.setMenuEnabled(True)
         self.shape_type = "rectangle"  # "rectangle", "ellipse", "polygon", "dynamic_line", "dynamic_polygon"
+        self.last_shape_type = self.shape_type
         self.polygon_points = []
         self.temp_line = None
         self.dynamic_lines = []
@@ -80,10 +81,15 @@ class CustomViewBox(pg.ViewBox):
 
     def clear_lines(self):
         """清除所有绘制的线条"""
-        items = self.allChildItems()
-        for item in items:
-            if isinstance(item, QtWidgets.QGraphicsLineItem) or isinstance(item, QtWidgets.QGraphicsEllipseItem):
+        if self.shape_type == 'dynamic_line' or self.last_shape_type == 'dynamic_line':
+            items = self.allChildItems()
+            for item in items:
+                if isinstance(item, QtWidgets.QGraphicsLineItem) or isinstance(item, QtWidgets.QGraphicsEllipseItem):
+                    self.removeItem(item)
+        else:
+            for item in self.dynamic_lines:
                 self.removeItem(item)
+
         self.dynamic_lines.clear()
         self.polygon_points.clear()
         if self.shape_item:
@@ -506,9 +512,11 @@ def on_icon_clicked(index, view):
         if view.current_index == index:
             print(f"Shape type {shape_types[index]} already selected and remains grey.")
         else:
+            view.last_shape_type = view.shape_type
             view.shape_type = shape_types[index]
             view.clear_lines()  # Clear lines when switching shapes
             view.current_index = index
+            view.clear_previous_lines = False
             if view.shape_type == "dynamic_polygon":
                 view.start_pos = None
                 view.initial_point = None
