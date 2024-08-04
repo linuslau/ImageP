@@ -485,6 +485,12 @@ class ImageWithRect(QWidget):
         self.plot_item.addItem(self.img)
 
         self.setWindowTitle(os.path.basename(self.image_path))  # Set window title to file name
+
+        # Add histogram LUT item for the right-side panel
+        self.histogram_lut = pg.HistogramLUTItem()
+        self.histogram_lut.setImageItem(self.img)
+        self.graphics_widget.addItem(self.histogram_lut)
+
         self.resize(1600, 1200)
 
         # Connect mouse move signal
