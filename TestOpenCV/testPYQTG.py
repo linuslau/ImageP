@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QVBoxLayout, QLabel, QWidget
+from PyQt5.QtWidgets import QApplication, QVBoxLayout, QLabel, QWidget, QSlider
 from PyQt5.QtCore import Qt
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
@@ -499,10 +499,44 @@ class ImageWithRect(QWidget):
         self.histogram_lut.setImageItem(self.img)
         self.graphics_widget.addItem(self.histogram_lut)
 
+        self.slider = None
+        self.is_3d = False
+
         self.resize(1600, 1200)
 
         # Connect mouse move signal
         self.plot_item.scene().sigMouseMoved.connect(self.on_mouse_move)
+
+    def load_raw_image(self, file_path, shape, dtype=np.uint8):
+        image = np.fromfile(file_path, dtype=dtype)
+        image = image.reshape(shape)
+        return image
+
+    def load_3d_image(self, file_path, shape, dtype=np.float32):
+        image = np.fromfile(file_path, dtype=dtype)
+        image = image.byteswap().newbyteorder()  # Handle little-endian data
+        image = image.reshape(shape)
+        return image
+
+    def display_3d_image(self, file_path, shape):
+        self.image_data = self.load_3d_image(file_path, shape)
+        self.is_3d = True
+
+        # Initialize first layer
+        image_layer = self.image_data[0, :, :]
+        self.img.setImage(image_layer)
+
+        # Create slider
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setRange(0, shape[0] - 1)
+        self.slider.valueChanged.connect(self.update_image_layer)
+
+        self.layout.addWidget(self.slider)
+
+    def update_image_layer(self, value):
+        if self.is_3d:
+            image_layer = self.image_data[value, :, :]
+            self.img.setImage(image_layer)
 
     def on_mouse_move(self, pos):
         self.view.on_mouse_move(pos)
@@ -511,15 +545,17 @@ class ImageWithRect(QWidget):
     def update_label(self, pos):
         pos = self.view.mapSceneToView(pos)
         i, j = int(pos.y()), int(pos.x())
-        i = np.clip(i, 0, self.view.image_data.shape[0] - 1)
-        j = np.clip(j, 0, self.view.image_data.shape[1] - 1)
-        val = self.view.image_data[i, j]
-        self.label.setText(f"pos: ({pos.x():.1f}, {pos.y():.1f})  pixel: ({i}, {j})  value: {val:.4f}")
-
-    def load_raw_image(self, file_path, shape):
-        image = np.fromfile(file_path, dtype=np.uint8)
-        image = image.reshape(shape)
-        return image
+        if self.is_3d and self.slider:
+            layer = self.slider.value()
+            i = np.clip(i, 0, self.image_data.shape[1] - 1)
+            j = np.clip(j, 0, self.image_data.shape[2] - 1)
+            val = self.image_data[layer, i, j]
+            self.label.setText(f"pos: ({pos.x():.1f}, {pos.y():.1f})  pixel: ({i}, {j})  layer: {layer}  value: {val:.4f}")
+        else:
+            i = np.clip(i, 0, self.view.image_data.shape[0] - 1)
+            j = np.clip(j, 0, self.view.image_data.shape[1] - 1)
+            val = self.view.image_data[i, j]
+            self.label.setText(f"pos: ({pos.x():.1f}, {pos.y():.1f})  pixel: ({i}, {j})  value: {val:.4f}")
 
 
 def create_and_show_image_with_rect():
@@ -531,6 +567,9 @@ def create_and_show_image_with_rect():
         created_app = False
 
     image_with_rect = ImageWithRect()
+
+    # Load the 3D image if required
+    image_with_rect.display_3d_image('maotai_384x384x384.raw', (384, 384, 384))
 
     # Connect to main window signal if main window is present
     main_window = QtWidgets.QApplication.instance().activeWindow()
