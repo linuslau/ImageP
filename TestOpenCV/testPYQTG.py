@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QVBoxLayout, QLabel, QWidget, QSlider
+from PyQt5.QtWidgets import QApplication, QVBoxLayout, QLabel, QWidget, QSlider, QPushButton, QHBoxLayout
 from PyQt5.QtCore import Qt
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
@@ -546,15 +546,40 @@ class ImageWithRect(QWidget):
         image_layer = self.image_data[0, :, :]
         self.img.setImage(image_layer)
 
-        # Create custom slider
-        self.slider = CustomSlider(Qt.Horizontal)
-        self.slider.setRange(0, shape[0] - 1)
-        self.slider.valueChanged.connect(self.update_image_layer)
-
-        self.layout.addWidget(self.slider)
+        # Create custom slider with buttons
+        self.create_slider_with_buttons(shape[0])
 
         # Update label with initial layer
         self.update_label_text(0)
+
+    def create_slider_with_buttons(self, max_value):
+        button_layout = QHBoxLayout()
+
+        decrease_button = QPushButton("◀")
+        decrease_button.setFixedSize(40, 40)  # 设置为正方形且较小
+        decrease_button.clicked.connect(self.decrease_layer)
+        button_layout.addWidget(decrease_button)
+
+        self.slider = CustomSlider(Qt.Horizontal)
+        self.slider.setRange(0, max_value - 1)
+        self.slider.valueChanged.connect(self.update_image_layer)
+        button_layout.addWidget(self.slider)
+
+        increase_button = QPushButton("▶")
+        increase_button.setFixedSize(40, 40)  # 设置为正方形且较小
+        increase_button.clicked.connect(self.increase_layer)
+        button_layout.addWidget(increase_button)
+
+        # Update label with initial layer
+        self.layout.addLayout(button_layout)
+
+    def increase_layer(self):
+        if self.slider and self.slider.value() < self.slider.maximum():
+            self.slider.setValue(self.slider.value() + 1)
+
+    def decrease_layer(self):
+        if self.slider and self.slider.value() > 0:
+            self.slider.setValue(self.slider.value() - 1)
 
     def update_image_layer(self, value):
         if self.is_3d:
