@@ -6,6 +6,26 @@ import pyqtgraph as pg
 import numpy as np
 import os  # Import os to work with file paths
 
+class CustomSlider(QSlider):
+    def wheelEvent(self, event):
+        # Do not call the parent class's wheelEvent, as it defaults to +3
+        # super().wheelEvent(event)
+
+        # Custom layer switching logic
+        delta = event.angleDelta().y()
+        current_value = self.value()
+        # print('current_value: ', current_value)
+
+        # Adjust the layer count based on the scroll direction, increasing or decreasing by one layer at a time
+        if delta > 0 and current_value < self.maximum():
+            self.setValue(current_value + 1)
+        elif delta < 0 and current_value > 0:
+            self.setValue(current_value - 1)
+
+        # Update the label
+        self.parent().update_label_text(self.value())
+        event.accept()
+
 class CustomViewBox(pg.ViewBox):
     # Your existing CustomViewBox class implementation
     def __init__(self, *args, **kwargs):
@@ -526,17 +546,29 @@ class ImageWithRect(QWidget):
         image_layer = self.image_data[0, :, :]
         self.img.setImage(image_layer)
 
-        # Create slider
-        self.slider = QSlider(Qt.Horizontal)
+        # Create custom slider
+        self.slider = CustomSlider(Qt.Horizontal)
         self.slider.setRange(0, shape[0] - 1)
         self.slider.valueChanged.connect(self.update_image_layer)
 
         self.layout.addWidget(self.slider)
 
+        # Update label with initial layer
+        self.update_label_text(0)
+
     def update_image_layer(self, value):
         if self.is_3d:
             image_layer = self.image_data[value, :, :]
             self.img.setImage(image_layer)
+            self.update_label_text(value)
+
+    def update_label_text(self, layer):
+        """Update the label with layer information."""
+        if self.is_3d and self.slider:
+            total_layers = self.image_data.shape[0]
+            i, j = 0, 0  # assuming the top-left pixel for this example
+            val = self.image_data[layer, i, j]
+            self.label.setText(f"pos: ({j:.1f}, {i:.1f})  pixel: ({i}, {j})  layer: {layer + 1}/{total_layers}  value: {val:.4f}")
 
     def on_mouse_move(self, pos):
         self.view.on_mouse_move(pos)
@@ -550,12 +582,25 @@ class ImageWithRect(QWidget):
             i = np.clip(i, 0, self.image_data.shape[1] - 1)
             j = np.clip(j, 0, self.image_data.shape[2] - 1)
             val = self.image_data[layer, i, j]
-            self.label.setText(f"pos: ({pos.x():.1f}, {pos.y():.1f})  pixel: ({i}, {j})  layer: {layer}  value: {val:.4f}")
+            total_layers = self.image_data.shape[0]
+            self.label.setText(f"pos: ({pos.x():.1f}, {pos.y():.1f})  pixel: ({i}, {j})  layer: {layer + 1}/{total_layers}  value: {val:.4f}")
         else:
             i = np.clip(i, 0, self.view.image_data.shape[0] - 1)
             j = np.clip(j, 0, self.view.image_data.shape[1] - 1)
             val = self.view.image_data[i, j]
             self.label.setText(f"pos: ({pos.x():.1f}, {pos.y():.1f})  pixel: ({i}, {j})  value: {val:.4f}")
+
+    def wheelEvent(self, event):
+        if self.is_3d and self.slider:
+            delta = event.angleDelta().y()
+            current_value = self.slider.value()
+            if delta > 0 and current_value < self.slider.maximum():
+                self.slider.setValue(current_value + 1)
+            elif delta < 0 and current_value > 0:
+                self.slider.setValue(current_value - 1)
+            event.accept()
+        else:
+            super().wheelEvent(event)
 
 
 def create_and_show_image_with_rect():
