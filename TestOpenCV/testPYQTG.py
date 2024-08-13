@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QVBoxLayout, QLabel, QWidget, QSlider, QPushButton, QHBoxLayout
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
@@ -14,7 +14,6 @@ class CustomSlider(QSlider):
         # Custom layer switching logic
         delta = event.angleDelta().y()
         current_value = self.value()
-        # print('current_value: ', current_value)
 
         # Adjust the layer count based on the scroll direction, increasing or decreasing by one layer at a time
         if delta > 0 and current_value < self.maximum():
@@ -521,11 +520,44 @@ class ImageWithRect(QWidget):
 
         self.slider = None
         self.is_3d = False
+        self.is_playing = False  # Track the play/pause state
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.play_next_layer)
+
+        self.setup_ui()
 
         self.resize(1600, 1200)
 
         # Connect mouse move signal
         self.plot_item.scene().sigMouseMoved.connect(self.on_mouse_move)
+
+    def setup_ui(self):
+        # Create custom slider
+        self.slider = CustomSlider(Qt.Horizontal)
+        self.slider.valueChanged.connect(self.update_image_layer)
+
+        # Create buttons
+        self.prev_button = QPushButton("◀")
+        self.prev_button.setFixedSize(40, 40)
+        self.next_button = QPushButton("▶")
+        self.next_button.setFixedSize(40, 40)
+        self.play_button = QPushButton("⯈")  # Play button
+        self.play_button.setFixedSize(40, 40)
+
+        # Connect buttons to methods
+        self.prev_button.clicked.connect(self.decrease_layer)
+        self.next_button.clicked.connect(self.increase_layer)
+        self.play_button.clicked.connect(self.toggle_play_pause)
+
+        # Arrange buttons and slider in a horizontal layout
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.play_button)
+        hbox.addWidget(self.prev_button)
+        hbox.addWidget(self.slider)
+        hbox.addWidget(self.next_button)
+
+        # Add to the main layout
+        self.layout.addLayout(hbox)
 
     def load_raw_image(self, file_path, shape, dtype=np.uint8):
         image = np.fromfile(file_path, dtype=dtype)
@@ -546,40 +578,11 @@ class ImageWithRect(QWidget):
         image_layer = self.image_data[0, :, :]
         self.img.setImage(image_layer)
 
-        # Create custom slider with buttons
-        self.create_slider_with_buttons(shape[0])
+        # Set slider range
+        self.slider.setRange(0, shape[0] - 1)
 
         # Update label with initial layer
         self.update_label_text(0)
-
-    def create_slider_with_buttons(self, max_value):
-        button_layout = QHBoxLayout()
-
-        decrease_button = QPushButton("◀")
-        decrease_button.setFixedSize(40, 40)  # 设置为正方形且较小
-        decrease_button.clicked.connect(self.decrease_layer)
-        button_layout.addWidget(decrease_button)
-
-        self.slider = CustomSlider(Qt.Horizontal)
-        self.slider.setRange(0, max_value - 1)
-        self.slider.valueChanged.connect(self.update_image_layer)
-        button_layout.addWidget(self.slider)
-
-        increase_button = QPushButton("▶")
-        increase_button.setFixedSize(40, 40)  # 设置为正方形且较小
-        increase_button.clicked.connect(self.increase_layer)
-        button_layout.addWidget(increase_button)
-
-        # Update label with initial layer
-        self.layout.addLayout(button_layout)
-
-    def increase_layer(self):
-        if self.slider and self.slider.value() < self.slider.maximum():
-            self.slider.setValue(self.slider.value() + 1)
-
-    def decrease_layer(self):
-        if self.slider and self.slider.value() > 0:
-            self.slider.setValue(self.slider.value() - 1)
 
     def update_image_layer(self, value):
         if self.is_3d:
@@ -626,6 +629,29 @@ class ImageWithRect(QWidget):
             event.accept()
         else:
             super().wheelEvent(event)
+
+    def increase_layer(self):
+        if self.is_3d and self.slider.value() < self.slider.maximum():
+            self.slider.setValue(self.slider.value() + 1)
+
+    def decrease_layer(self):
+        if self.is_3d and self.slider.value() > 0:
+            self.slider.setValue(self.slider.value() - 1)
+
+    def toggle_play_pause(self):
+        if self.is_playing:
+            self.timer.stop()
+            self.play_button.setText("⯈")  # Change to play icon
+        else:
+            self.timer.start(100)  # Adjust the interval as needed
+            self.play_button.setText("⏸")  # Change to pause icon
+        self.is_playing = not self.is_playing
+
+    def play_next_layer(self):
+        if self.slider.value() < self.slider.maximum():
+            self.slider.setValue(self.slider.value() + 1)
+        else:
+            self.slider.setValue(0)  # Loop back to the first layer
 
 
 def create_and_show_image_with_rect():
