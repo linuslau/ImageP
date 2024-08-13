@@ -6,6 +6,16 @@ import pyqtgraph as pg
 import numpy as np
 import os  # Import os to work with file paths
 
+class CustomEllipseItem(QtWidgets.QGraphicsEllipseItem):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations, True)
+
+    def paint(self, painter, option, widget):
+        painter.setBrush(self.brush())
+        painter.setPen(self.pen())
+        painter.drawEllipse(-5, -5, 10, 10)
+
 class CustomSlider(QSlider):
     def wheelEvent(self, event):
         # Do not call the parent class's wheelEvent, as it defaults to +3
@@ -94,8 +104,9 @@ class CustomViewBox(pg.ViewBox):
             ]
 
         for point in self.control_points:
-            control_item = QtWidgets.QGraphicsEllipseItem(point.x() - 3, point.y() - 3, 6, 6)  # 控制点缩小到 6x6 像素
-            control_item.setBrush(pg.mkBrush('w'))  # 设置控制点颜色为白色
+            control_item = CustomEllipseItem()
+            control_item.setBrush(pg.mkBrush('w'))  # Keep the control point color white
+            control_item.setPos(point)  # Use the setPos method to position the control point correctly
             self.addItem(control_item)
             self.control_items.append(control_item)
 
@@ -130,6 +141,26 @@ class CustomViewBox(pg.ViewBox):
                 super().mousePressEvent(event)
             return
 
+        # Clear the previous control points when starting a new drawing or upon clicking
+        if self.shape_type in ["rectangle", "ellipse"] and self.shape_item is not None:
+            rect = self.shape_item.rect()
+            for i, point in enumerate(self.control_points):
+                if (point - view_pos).manhattanLength() < 10:
+                    self.start_pos = view_pos
+                    self.resizing = True
+                    self.dragging_control_point = i
+                    self.shape_initial = rect
+                    self.resize_start_pos = self.start_pos
+                    event.accept()
+                    return
+            if rect.contains(view_pos):
+                # Start dragging the existing shape instead of clearing it
+                self.start_pos = view_pos
+                self.dragging = True
+                event.accept()
+                return
+            self.clear_lines()
+
         # Check if near a control point in dynamic_line mode
         near_control_point = False
         if self.shape_type == "dynamic_line":
@@ -144,8 +175,9 @@ class CustomViewBox(pg.ViewBox):
         if self.shape_type == "polygon":
             if event.button() == QtCore.Qt.LeftButton:
                 self.polygon_points.append(view_pos)
-                control_item = QtWidgets.QGraphicsEllipseItem(view_pos.x() - 3, view_pos.y() - 3, 6, 6)
+                control_item = CustomEllipseItem()
                 control_item.setBrush(pg.mkBrush('w'))
+                control_item.setPos(view_pos)  # Use the setPos method to position the control point correctly
                 self.addItem(control_item)
                 self.control_items.append(control_item)
                 if len(self.polygon_points) > 1:
