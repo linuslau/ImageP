@@ -230,19 +230,29 @@ class CustomViewBox(pg.ViewBox):
                 if self.start_pos is None:
                     self.start_pos = new_point
                     self.initial_point = self.start_pos
-                    self.dynamic_lines.append(
-                        QtWidgets.QGraphicsEllipseItem(new_point[0] - 3, new_point[1] - 3, 6, 6)
-                    )
-                    self.dynamic_lines[-1].setBrush(pg.mkBrush('w'))  # 设置控制点颜色为红色
-                    self.addItem(self.dynamic_lines[-1])
+                    control_item = CustomEllipseItem()
+                    control_item.setBrush(pg.mkBrush('r'))
+                    control_item.setPos(QtCore.QPointF(*self.start_pos))
+                    self.addItem(control_item)
+                    self.control_items.append(control_item)
                     print(f"Initial point set: {self.initial_point}")
                 else:
+                    # For subsequent points, finalize the previous line and prepare for the next
+                    if self.temp_line:
+                        self.removeItem(self.temp_line)
+                        self.temp_line = None
+                    line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(QtCore.QPointF(*self.start_pos), mouse_point))
+                    line.setPen(pg.mkPen(color='r', width=2))
+                    self.addItem(line)
+                    self.dynamic_lines.append(line)
+
+                    # Ensure that the next round of drawing does not affect the previous round's last line
                     if self.is_close_to_initial_point(new_point):
-                        self.dynamic_lines.append(
-                            QtWidgets.QGraphicsEllipseItem(new_point[0] - 3, new_point[1] - 3, 6, 6)
-                        )
-                        self.dynamic_lines[-1].setBrush(pg.mkBrush('r'))  # 设置控制点颜色为红色
-                        self.addItem(self.dynamic_lines[-1])
+                        control_item = CustomEllipseItem()
+                        control_item.setBrush(pg.mkBrush('w'))
+                        control_item.setPos(QtCore.QPointF(*self.start_pos))
+                        self.addItem(control_item)
+                        self.control_items.append(control_item)
                         self.end_current_round()
                         print("Ending current round")
                         return
@@ -252,11 +262,11 @@ class CustomViewBox(pg.ViewBox):
                         self.addItem(line)
                         self.dynamic_lines.append(line)
                         self.start_pos = new_point
-                        self.dynamic_lines.append(
-                            QtWidgets.QGraphicsEllipseItem(new_point[0] - 3, new_point[1] - 3, 6, 6)
-                        )
-                        self.dynamic_lines[-1].setBrush(pg.mkBrush('r'))  # 设置控制点颜色为红色
-                        self.addItem(self.dynamic_lines[-1])
+                        control_item = CustomEllipseItem()
+                        control_item.setBrush(pg.mkBrush('w'))
+                        control_item.setPos(QtCore.QPointF(*self.start_pos))
+                        self.addItem(control_item)
+                        self.control_items.append(control_item)
                         print(f"New line drawn to: {new_point}")
             return
 
@@ -312,11 +322,11 @@ class CustomViewBox(pg.ViewBox):
                     self.removeItem(last_line)
                     self.dynamic_lines.pop()
 
-                temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(QtCore.QPointF(*self.start_pos), current_pos))
-                temp_line.setPen(pg.mkPen(color='r', width=2))
-                self.addItem(temp_line)
-                self.dynamic_lines.append(temp_line)
-            return
+            # Draw the current line from start_pos to the current mouse position
+            temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(QtCore.QPointF(*self.start_pos), current_pos))
+            temp_line.setPen(pg.mkPen(color='r', width=2))
+            self.addItem(temp_line)
+            self.dynamic_lines.append(temp_line)
 
     def mouseMoveEvent(self, event):
         self.moved = True  # Set moved flag to True when mouse is moved
@@ -417,7 +427,7 @@ class CustomViewBox(pg.ViewBox):
             self.dragging_control_point = None
         event.accept()
 
-    def is_close_to_initial_point(self, point, threshold=20):
+    def is_close_to_initial_point(self, point, threshold=5):
         """判断当前点是否接近初始点"""
         distance = ((point[0] - self.initial_point[0]) ** 2 + (point[1] - self.initial_point[1]) ** 2) ** 0.5
         print(f"Distance from initial point: {distance}")
