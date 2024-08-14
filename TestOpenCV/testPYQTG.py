@@ -192,13 +192,6 @@ class CustomViewBox(pg.ViewBox):
             return
 
         if self.shape_type == "dynamic_line":
-            if self.start_pos is None:
-                # First click: store the start position, but don't create any item yet
-                self.start_pos = view_pos
-                print(f"Dynamic line started at: {self.start_pos}")  # Debug information
-                event.accept()
-                return
-
             for i, point in enumerate(self.control_points):
                 if (point - view_pos).manhattanLength() < 10:
                     self.dragging_control_point = i
@@ -207,6 +200,13 @@ class CustomViewBox(pg.ViewBox):
                         self.dragging_line = True
                     event.accept()
                     return
+
+            if self.start_pos is None:
+                # First click: store the start position, but don't create any item yet
+                self.start_pos = view_pos
+                print(f"Dynamic line started at: {self.start_pos}")  # Debug information
+                event.accept()
+                return
 
             if not self.dragging_line:
                 self.start_pos = view_pos
