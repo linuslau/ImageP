@@ -191,7 +191,6 @@ class CustomViewBox(pg.ViewBox):
             return
 
         if self.shape_type == "dynamic_line":
-
             if self.start_pos is None:
                 # First click: store the start position, but don't create any item yet
                 self.start_pos = view_pos
@@ -241,6 +240,8 @@ class CustomViewBox(pg.ViewBox):
                     if self.temp_line:
                         self.removeItem(self.temp_line)
                         self.temp_line = None
+
+                    # Add the finalized line
                     line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(QtCore.QPointF(*self.start_pos), mouse_point))
                     line.setPen(pg.mkPen(color='r', width=2))
                     self.addItem(line)
@@ -257,10 +258,6 @@ class CustomViewBox(pg.ViewBox):
                         print("Ending current round")
                         return
                     else:
-                        line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(QtCore.QPointF(*self.start_pos), mouse_point))
-                        line.setPen(pg.mkPen(color='r', width=2))
-                        self.addItem(line)
-                        self.dynamic_lines.append(line)
                         self.start_pos = new_point
                         control_item = CustomEllipseItem()
                         control_item.setBrush(pg.mkBrush('w'))
@@ -316,17 +313,14 @@ class CustomViewBox(pg.ViewBox):
         if self.shape_type == "dynamic_polygon" and self.start_pos is not None:
             print(f"Mouse moved to: {current_pos}")  # Debug information
 
-            if self.dynamic_lines:
-                last_line = self.dynamic_lines[-1]
-                if isinstance(last_line, QtWidgets.QGraphicsLineItem):
-                    self.removeItem(last_line)
-                    self.dynamic_lines.pop()
+            # Remove the last temporary line if it exists
+            if self.temp_line:
+                self.removeItem(self.temp_line)
 
             # Draw the current line from start_pos to the current mouse position
-            temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(QtCore.QPointF(*self.start_pos), current_pos))
-            temp_line.setPen(pg.mkPen(color='r', width=2))
-            self.addItem(temp_line)
-            self.dynamic_lines.append(temp_line)
+            self.temp_line = QtWidgets.QGraphicsLineItem(QtCore.QLineF(QtCore.QPointF(*self.start_pos), current_pos))
+            self.temp_line.setPen(pg.mkPen(color='r', width=2))
+            self.addItem(self.temp_line)
 
     def mouseMoveEvent(self, event):
         self.moved = True  # Set moved flag to True when mouse is moved
@@ -734,6 +728,18 @@ def on_icon_clicked(index, view):
         if view.current_index == index:
             print(f"Shape type {shape_types[index]} already selected and remains grey.")
         else:
+            # Before switching modes, clear any unfinished lines in dynamic_polygon mode
+            if view.shape_type == "dynamic_polygon":
+                if view.temp_line:
+                    view.removeItem(view.temp_line)
+                    view.temp_line = None
+                if view.dynamic_lines:
+                    last_line = view.dynamic_lines[-1]
+                    if isinstance(last_line, QtWidgets.QGraphicsLineItem):
+                        view.removeItem(last_line)
+                        view.dynamic_lines.pop()
+
+            # Switch shape type
             view.last_shape_type = view.shape_type
             view.shape_type = shape_types[index]
             view.clear_lines()  # Clear lines when switching shapes
@@ -750,6 +756,7 @@ def on_icon_clicked(index, view):
                 view.start_pos = None
                 view.temp_line = None
             print(f"Shape type set to: {shape_types[index]}")
+
 
 
 if __name__ == '__main__':
