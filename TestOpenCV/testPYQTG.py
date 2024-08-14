@@ -11,11 +11,12 @@ class CustomEllipseItem(QtWidgets.QGraphicsEllipseItem):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations, True)
+        self.setRect(-5, -5, 10, 10)  # Ensure consistent size for all control points
 
     def paint(self, painter, option, widget):
         painter.setBrush(self.brush())
         painter.setPen(self.pen())
-        painter.drawEllipse(-5, -5, 10, 10)
+        painter.drawEllipse(self.rect())  # Use the set rectangle for drawing
 
 class CustomSlider(QSlider):
     def wheelEvent(self, event):
