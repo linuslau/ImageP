@@ -5,6 +5,7 @@ from pyqtgraph.Qt import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
 import os  # Import os to work with file paths
+from ImageP.utils.state_manager import state_manager
 
 class CustomEllipseItem(QtWidgets.QGraphicsEllipseItem):
     def __init__(self, *args, **kwargs):
@@ -707,6 +708,13 @@ def create_and_show_image_with_rect():
         created_app = False
 
     image_with_rect = ImageWithRect()
+
+    selected_shape_type = state_manager.get_shape_type()
+    clear_previous_lines = state_manager.get_clear_previous_lines()
+    if clear_previous_lines:
+        image_with_rect.view.clear_previous_lines = True
+    image_with_rect.view.shape_type = selected_shape_type
+    image_with_rect.view.clear_lines()
 
     # Load the 3D image if required
     image_with_rect.display_3d_image('maotai_384x384x384.raw', (384, 384, 384))
