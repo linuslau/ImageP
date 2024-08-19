@@ -25,13 +25,19 @@ def render_volume(file_path):
     data = (data - np.min(data)) / (np.max(data) - np.min(data))
 
     # 使用Mayavi渲染3D图像
-    mlab.figure(bgcolor=(1, 1, 1))
+    mlab.figure(bgcolor=(1, 1, 1), size=(1000, 1000))
 
     # 渲染体数据
     mlab.contour3d(data, contours=[0.2, 0.5, 0.8], opacity=0.5, colormap='gray')
 
     # 添加颜色条
-    mlab.colorbar(title='Intensity', orientation='vertical')
+    cbar = mlab.colorbar(title='Intensity', orientation='vertical')
+
+    # 修改颜色条的字体颜色为黑色
+    cbar.label_text_property.color = (0, 0, 0)  # 这是字体颜色，(0, 0, 0) 表示黑色
+
+    # 设置默认视角，使其不再倾斜
+    # mlab.view(azimuth=0, elevation=170, distance='auto', focalpoint='auto')
 
     # 显示
     mlab.show()
