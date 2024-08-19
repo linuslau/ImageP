@@ -1,29 +1,42 @@
 import numpy as np
 from mayavi import mlab
-import matplotlib.pyplot as plt
 
-# 渲染体数据
+
 def render_volume(file_path):
-    # 读取体数据
+    # 文件基本信息
+    dtype = np.float32
+    dtype_size = np.dtype(dtype).itemsize
+
+    # 读取数据文件
     with open(file_path, 'rb') as f:
-        dtype = np.float32
-        dtype_size = np.dtype(dtype).itemsize
         f.seek(0, 2)  # 移动到文件末尾
-        file_size = f.tell()
-        shape = (384, 384, 384)
-        f.seek(0)
+        file_size = f.tell()  # 获取文件大小
+        f.seek(0)  # 移动到文件开头
+
+        # 计算正确的形状
+        volume_size = 384  # 由于之前讨论过，这个数据应该是384x384x384
+        shape = (volume_size, volume_size, volume_size)
+        print(f"Calculated shape: {shape}")
+
+        # 加载数据
         data = np.fromfile(f, dtype=dtype).reshape(shape)
 
-    # 阈值处理，只保留显著的形状部分
-    threshold_value = 0.02  # 根据实际情况调整阈值
-    data[data < threshold_value] = 0  # 抑制小于阈值的噪声
+    # 数据归一化处理
+    data = (data - np.min(data)) / (np.max(data) - np.min(data))
 
-    # 使用灰度图显示
-    src = mlab.pipeline.scalar_field(data)
-    mlab.pipeline.iso_surface(src, contours=[data.max() * 0.5], opacity=1.0)
-    mlab.pipeline.volume(src, vmin=data.min(), vmax=data.max())
+    # 使用Mayavi渲染3D图像
+    mlab.figure(bgcolor=(1, 1, 1))
 
+    # 渲染体数据
+    mlab.contour3d(data, contours=[0.2, 0.5, 0.8], opacity=0.5, colormap='gray')
+
+    # 添加颜色条
+    mlab.colorbar(title='Intensity', orientation='vertical')
+
+    # 显示
     mlab.show()
 
-# 调用渲染函数
-render_volume('maotai_384x384x384.raw')
+
+if __name__ == '__main__':
+    file_path = 'maotai_384x384x384.raw'
+    render_volume(file_path)
