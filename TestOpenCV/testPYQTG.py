@@ -6,6 +6,8 @@ import pyqtgraph as pg
 import numpy as np
 import os  # Import os to work with file paths
 from ImageP.utils.state_manager import state_manager
+import subprocess
+
 
 class CustomEllipseItem(QtWidgets.QGraphicsEllipseItem):
     def __init__(self, *args, **kwargs):
@@ -576,7 +578,10 @@ class ImageWithRect(QWidget):
 
         # Connect mouse move signal
         self.plot_item.scene().sigMouseMoved.connect(self.on_mouse_move)
-
+    def render_3d_image(self):
+        # Replace with the actual filename or make it dynamic
+        file_name = 'maotai_384x384x384.raw'
+        subprocess.run(['python', '../TestOpenCV/test3DRender.py', file_name])
     def setup_ui(self):
         # Create custom slider
         self.slider = CustomSlider(Qt.Horizontal)
@@ -604,6 +609,14 @@ class ImageWithRect(QWidget):
 
         # Add to the main layout
         self.layout.addLayout(hbox)
+
+        self.render_button = QPushButton("Render 3D")
+        #self.render_button.setFixedSize(100, 40)
+        self.render_button.adjustSize()
+        self.render_button.clicked.connect(self.render_3d_image)
+
+        # Add the button to your layout
+        hbox.addWidget(self.render_button)
 
     def load_raw_image(self, file_path, shape, dtype=np.uint8):
         image = np.fromfile(file_path, dtype=dtype)

@@ -1,48 +1,45 @@
+import sys
 import numpy as np
 from mayavi import mlab
 
-
 def render_volume(file_path):
-    # 文件基本信息
+    # File basic information
     dtype = np.float32
     dtype_size = np.dtype(dtype).itemsize
 
-    # 读取数据文件
+    # Read data file
     with open(file_path, 'rb') as f:
-        f.seek(0, 2)  # 移动到文件末尾
-        file_size = f.tell()  # 获取文件大小
-        f.seek(0)  # 移动到文件开头
+        f.seek(0, 2)  # Move to the end of the file
+        file_size = f.tell()  # Get file size
+        f.seek(0)  # Move to the beginning of the file
 
-        # 计算正确的形状
-        volume_size = 384  # 由于之前讨论过，这个数据应该是384x384x384
+        # Calculate correct shape
+        volume_size = 384  # Assuming the data is 384x384x384
         shape = (volume_size, volume_size, volume_size)
         print(f"Calculated shape: {shape}")
 
-        # 加载数据
+        # Load data
         data = np.fromfile(f, dtype=dtype).reshape(shape)
 
-    # 数据归一化处理
+    # Normalize data
     data = (data - np.min(data)) / (np.max(data) - np.min(data))
 
-    # 使用Mayavi渲染3D图像
-    mlab.figure(bgcolor=(1, 1, 1), size=(1000, 1000))
+    # Render 3D image with Mayavi
+    mlab.figure(bgcolor=(1, 1, 1), size=(1800, 1300))
 
-    # 渲染体数据
+    # Render volume data
     mlab.contour3d(data, contours=[0.2, 0.5, 0.8], opacity=0.5, colormap='gray')
 
-    # 添加颜色条
+    # Add color bar with black text
     cbar = mlab.colorbar(title='Intensity', orientation='vertical')
+    cbar.label_text_property.color = (0, 0, 0)
 
-    # 修改颜色条的字体颜色为黑色
-    cbar.label_text_property.color = (0, 0, 0)  # 这是字体颜色，(0, 0, 0) 表示黑色
-
-    # 设置默认视角，使其不再倾斜
-    # mlab.view(azimuth=0, elevation=170, distance='auto', focalpoint='auto')
-
-    # 显示
+    # Show
     mlab.show()
 
-
 if __name__ == '__main__':
-    file_path = 'maotai_384x384x384.raw'
+    if len(sys.argv) > 1:
+        file_path = sys.argv[1]
+    else:
+        file_path = 'maotai_384x384x384.raw'  # Default filename
     render_volume(file_path)
