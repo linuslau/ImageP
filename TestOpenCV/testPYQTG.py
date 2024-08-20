@@ -581,7 +581,7 @@ class ImageWithRect(QWidget):
     def render_3d_image(self):
         # Replace with the actual filename or make it dynamic
         file_name = 'maotai_384x384x384.raw'
-        subprocess.run(['python', '../TestOpenCV/test3DRender.py', file_name])
+        subprocess.Popen(['python', '../TestOpenCV/test3DRender.py', file_name])
     def setup_ui(self):
         # Create custom slider
         self.slider = CustomSlider(Qt.Horizontal)
