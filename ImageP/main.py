@@ -1,27 +1,10 @@
-from PyQt5 import QtWidgets, QtCore
-from ui.main_ui_qt5 import Ui_MainWindow
-from utils.menu_populate import populate_menu, populate_icons, load_menu_order, IconManager
 import sys
 import os
-
-def add_menu_item(menu, path, is_folder, status_bar):
-    if is_folder:
-        sub_menu = menu.addMenu(os.path.basename(path))
-        populate_menu(sub_menu, path, status_bar)
-    else:
-        action = menu.addAction(os.path.basename(path).replace('.py', ''))
-        action.triggered.connect(lambda: handle_menu_click(path))
-        action.hovered.connect(lambda: status_bar.showMessage(os.path.basename(path).replace('.py', '')))
-        menu.addAction(action)
-
-def handle_menu_click(file_path):
-    # Import the corresponding module based on the file path and call the predefined function
-    module_name = os.path.splitext(os.path.basename(file_path))[0]
-    module_spec = __import__('menu.' + module_name, fromlist=[module_name])
-    if hasattr(module_spec, 'menu_click'):
-        window = module_spec.menu_click()
-        if window:
-            window.show()
+import asyncio
+from PyQt5 import QtWidgets, QtCore
+from qasync import QEventLoop
+from ui.main_ui_qt5 import Ui_MainWindow
+from utils.menu_populate import populate_menu, populate_icons, load_menu_order, IconManager, handle_menu_click
 
 class MainWindow(QtWidgets.QMainWindow):
     icon_clicked = QtCore.pyqtSignal(int)
@@ -59,7 +42,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     item_path = os.path.join(root_menu_path, item)
                     if (os.path.isdir(item_path) and item != '__pycache__') or (item.endswith('.py') and item != '__init__.py'):
-                        add_menu_item(self.ui.menubar, item_path, os.path.isdir(item_path), self.ui.statusbar)
+                        self.add_menu_item(self.ui.menubar, item_path, os.path.isdir(item_path), self.ui.statusbar)
 
         # Initialize IconManager
         self.icon_manager = IconManager()
@@ -71,7 +54,22 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.ui.statusbar.showMessage("Welcome to use ImageP")
 
+    def add_menu_item(self, parent_menu, path, is_folder, status_bar):
+        print(f"Adding menu item for {path}")
+        if is_folder:
+            sub_menu = parent_menu.addMenu(os.path.basename(path))
+            print(f"Creating submenu for {os.path.basename(path)}")
+            populate_menu(sub_menu, path, status_bar)
+        else:
+            print(f"Creating menu item for {os.path.basename(path)}")
+            action = parent_menu.addAction(os.path.basename(path).replace('.py', ''))
+            print(f"Connecting {action.text()} to handle_menu_click")
+            action.triggered.connect(lambda: handle_menu_click(path))
+            action.hovered.connect(lambda: status_bar.showMessage(os.path.basename(path).replace('.py', '')))
+            parent_menu.addAction(action)
+
     def on_icon_clicked(self, index):
+        print(f"Icon clicked with index: {index}")
         self.icon_clicked.emit(index)
 
     def leaveEvent(self, event):
@@ -85,10 +83,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
+    loop = QEventLoop(app)
+    asyncio.set_event_loop(loop)
+
     main_window = MainWindow()
     main_window.setWindowTitle("ImageP")
     main_window.show()
-    sys.exit(app.exec_())
+
+    with loop:
+        loop.run_forever()
 
 if __name__ == '__main__':
     main()

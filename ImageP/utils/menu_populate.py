@@ -1,4 +1,5 @@
 import os
+import asyncio
 from PyQt5.QtWidgets import QAction
 from PyQt5.QtGui import QIcon, QPixmap, QKeySequence
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
@@ -31,7 +32,8 @@ class IconManager(QObject):
                 icon = QIcon(pixmap.scaled(size, size))
                 action.setIcon(icon)
                 self.original_icons[action] = icon
-                action.triggered.connect(lambda checked=False, path=py_file, act=action: self.handle_icon_click(path, act))
+                action.triggered.connect(
+                    lambda checked=False, path=py_file, act=action: self.handle_icon_click(path, act))
         else:
             # If no image or Python file, set a default icon and no action
             default_icon = QIcon()  # You can set a default icon here if you have one
@@ -60,11 +62,9 @@ class IconManager(QObject):
             index = self.icon_actions.index(action)
             self.icon_clicked.emit(index)
 
-            module_spec = __import__(module_name, fromlist=[module_name])
-            if hasattr(module_spec, 'handle_click'):
-                module_spec.handle_click()
-            if hasattr(module_spec, 'menu_click'):
-                module_spec.menu_click()
+            # Call the menu click handling logic
+            handle_menu_click(action.parentWidget().parent(), py_file)
+
         except ModuleNotFoundError as e:
             print(f"Module not found: {e}")
         except Exception as e:
@@ -123,6 +123,7 @@ def load_icon(file_path):
 
 
 def populate_icons(toolbar, icons_path, status_bar, icon_manager):
+    # Load the order from order.txt
     items = os.listdir(icons_path)
     ordered_items = load_menu_order(icons_path)
     combined_items = ordered_items + [item for item in items if item not in ordered_items]
@@ -174,21 +175,47 @@ def populate_menu(menu, folder_path, status_bar):
             if icon:
                 action.setIcon(icon)
 
-            action.triggered.connect(lambda checked=False, path=item_path: handle_menu_click(path))
+            action.triggered.connect(lambda checked=False, path=item_path: handle_menu_click(menu.parentWidget().parent(), path))
             action.hovered.connect(lambda: status_bar.showMessage(action.text()))
             menu.addAction(action)
 
 
-def handle_menu_click(file_path):
-    relative_path = os.path.relpath(file_path, os.path.join(os.path.dirname(__file__), '..'))
-    module_name = relative_path.replace(os.path.sep, '.').replace('.py', '')
+def handle_menu_click(main_window, file_path):
     try:
-        module_spec = __import__(module_name, fromlist=[module_name.split('.')[-1]])
+        print(f"handle_menu_click triggered with file_path: {file_path}")
+        relative_path = os.path.relpath(file_path, os.path.join(os.path.dirname(__file__), '..'))
+        module_name = relative_path.replace(os.path.sep, '.').replace('.py', '')
+        print(f"Module name: {module_name}")
+
+        # Load the module and call its functions
+        module_spec = __import__(module_name, fromlist=[module_name])
+
+        # First handle synchronous methods
         if hasattr(module_spec, 'menu_click'):
+            print("Calling menu_click")
             module_spec.menu_click()
+
         if hasattr(module_spec, 'handle_click'):
+            print("Calling handle_click")
             module_spec.handle_click()
+
+        # Then handle asynchronous methods
+        loop = asyncio.get_event_loop()
+
+        async def run_async_tasks():
+            if hasattr(module_spec, 'menu_click_async'):
+                print("Starting async task for menu_click_async")
+                await module_spec.menu_click_async()
+
+            if hasattr(module_spec, 'handle_click_async'):
+                print("Starting async task for handle_click_async")
+                await module_spec.handle_click_async()
+
+        # If there are async tasks, execute them
+        if hasattr(module_spec, 'menu_click_async') or hasattr(module_spec, 'handle_click_async'):
+            loop.create_task(run_async_tasks())
+
     except ModuleNotFoundError as e:
         print(f"Module not found: {e}")
     except Exception as e:
-        print(f"Error while handling menu click: {e}")
+        print(f"Error in handle_menu_click: {e}")

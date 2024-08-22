@@ -1,0 +1,16 @@
+Smooth.py
+Sharpen.py
+Find Edges.py
+Find Maxima.py
+Enhance Contrast.py
+Noise
+Shadows
+Binary
+Math
+FFT
+Filters
+-
+Batch
+Image Calculator.py
+Subtract Background
+Repeat Command
