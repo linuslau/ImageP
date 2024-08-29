@@ -1,5 +1,6 @@
 import os
 import asyncio
+import threading
 from PyQt5.QtWidgets import QAction
 from PyQt5.QtGui import QIcon, QPixmap, QKeySequence
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
@@ -214,6 +215,21 @@ def handle_menu_click(main_window, file_path):
         # If there are async tasks, execute them
         if hasattr(module_spec, 'menu_click_async') or hasattr(module_spec, 'handle_click_async'):
             loop.create_task(run_async_tasks())
+
+        # Function to handle asynchronous tasks in a thread
+        def run_async_tasks():
+            if hasattr(module_spec, 'menu_click_thread'):
+                print("Starting thread task for menu_click_thread")
+                module_spec.menu_click_thread()  # Assuming this can be run without 'await'
+
+            if hasattr(module_spec, 'handle_click_thread'):
+                print("Starting thread task for handle_click_thread")
+                module_spec.handle_click_thread()  # Assuming this can be run without 'await'
+
+        # If there are async tasks, execute them in a new thread
+        if hasattr(module_spec, 'menu_click_thread') or hasattr(module_spec, 'handle_click_thread'):
+            async_thread = threading.Thread(target=run_async_tasks)
+            async_thread.start()
 
     except ModuleNotFoundError as e:
         print(f"Module not found: {e}")
