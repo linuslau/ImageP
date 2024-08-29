@@ -531,8 +531,10 @@ class CustomViewBox(pg.ViewBox):
 
 
 class ImageWithRect(QWidget):
-    def __init__(self):
+    def __init__(self, file_path):
         super().__init__()
+
+        self.file_path = file_path  # Store the file_path for later use
 
         self.graphics_widget = pg.GraphicsLayoutWidget()
         self.layout = QVBoxLayout(self)
@@ -579,9 +581,8 @@ class ImageWithRect(QWidget):
         # Connect mouse move signal
         self.plot_item.scene().sigMouseMoved.connect(self.on_mouse_move)
     def render_3d_image(self):
-        # Replace with the actual filename or make it dynamic
-        file_name = 'maotai_384x384x384.raw'
-        subprocess.Popen(['python', '../TestOpenCV/test3DRender.py', file_name])
+        # Now use the file_path stored in the class
+        subprocess.Popen(['python', '../TestOpenCV/test3DRender.py', self.file_path])
     def setup_ui(self):
         # Create custom slider
         self.slider = CustomSlider(Qt.Horizontal)
@@ -721,7 +722,7 @@ def create_and_show_image_with_rect(file_path):
     else:
         created_app = False
 
-    image_with_rect = ImageWithRect()
+    image_with_rect = ImageWithRect(file_path)
 
     selected_shape_type = state_manager.get_shape_type()
     clear_previous_lines = state_manager.get_clear_previous_lines()
