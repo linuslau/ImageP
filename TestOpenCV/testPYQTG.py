@@ -713,7 +713,7 @@ class ImageWithRect(QWidget):
             self.slider.setValue(0)  # Loop back to the first layer
 
 
-def create_and_show_image_with_rect():
+def create_and_show_image_with_rect(file_path):
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
@@ -731,7 +731,7 @@ def create_and_show_image_with_rect():
     image_with_rect.view.clear_lines()
 
     # Load the 3D image if required
-    image_with_rect.display_3d_image('maotai_384x384x384.raw', (384, 384, 384))
+    image_with_rect.display_3d_image(file_path, (384, 384, 384))
 
     # Connect to main window signal if main window is present
     main_window = QtWidgets.QApplication.instance().activeWindow()
