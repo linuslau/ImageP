@@ -648,6 +648,23 @@ class ImageWithRect(QWidget):
 
     def load_raw_image(self, file_path, shape, dtype=np.uint8):
         image = np.fromfile(file_path, dtype=dtype)
+
+        # 计算目标形状的总大小
+        expected_size = np.prod(shape)
+
+        if image.size < expected_size:
+            # 如果数据太少，不足以填充整个形状，则填充0值
+            print(
+                f"Warning: Data size ({image.size}) is smaller than expected shape {shape} ({expected_size}). Padding with zeros.")
+            padding_size = expected_size - image.size
+            image = np.pad(image, (0, padding_size), mode='constant', constant_values=0)
+        elif image.size > expected_size:
+            # 如果数据太多，裁剪数据到目标大小
+            print(
+                f"Warning: Data size ({image.size}) is larger than expected shape {shape} ({expected_size}). Cropping data.")
+            image = image[:expected_size]
+
+        # 重塑数据到目标形状
         image = image.reshape(shape)
         return image
 
@@ -787,12 +804,12 @@ def create_and_show_image_with_rect(file_path, params):
 
     if layers > 1:
         # Load the 3D image if required
-        image_with_rect.display_3d_image(file_path, (width, height, layers), params)
+        image_with_rect.display_3d_image(file_path, (height, width, layers), params)
 
     else:
         if width > 0 and height > 0:
             # 使用从对话框获取的参数来加载2D图像
-            image_with_rect.display_2d_image(file_path, (width, height), params)
+            image_with_rect.display_2d_image(file_path, (height, width), params)
         else:
             print("Width or height cannot be 0.")
             return
