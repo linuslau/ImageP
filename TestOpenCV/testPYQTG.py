@@ -657,13 +657,27 @@ class ImageWithRect(QWidget):
         image = image.reshape(shape)
         return image
 
-    def display_3d_image(self, file_path, shape):
+    def display_3d_image(self, file_path, shape, params):
+
+        # 打印出所有传入的参数
+        print("File path:", file_path)
+        print("Shape:", shape)
+        print("Parameters:")
+        for key, value in params.items():
+            print(f"  {key}: {value}")
+
         self.image_data = self.load_3d_image(file_path, shape)
         self.is_3d = True
 
-        # Initialize first layer
+        # Initialize the image layer
         image_layer = self.image_data[0, :, :]
-        self.img.setImage(image_layer)
+
+        # If img is None, initialize it
+        if self.img is None:
+            self.img = pg.ImageItem(image_layer)
+            self.plot_item.addItem(self.img)
+        else:
+            self.img.setImage(image_layer)
 
         # Set slider range
         self.slider.setRange(0, shape[0] - 1)
@@ -767,18 +781,21 @@ def create_and_show_image_with_rect(file_path, params):
 
     image_with_rect.file_path = file_path
 
-    # Load the 3D image if required
-    # image_with_rect.display_3d_image(file_path, (384, 384, 384))
-
+    layers = params['num_images']
     width = params['width']
     height = params['height']
 
-    if width > 0 and height > 0:
-        # 使用从对话框获取的参数来加载2D图像
-        image_with_rect.display_2d_image(file_path, (params['width'], params['height']), params)
+    if layers > 1:
+        # Load the 3D image if required
+        image_with_rect.display_3d_image(file_path, (width, height, layers), params)
+
     else:
-        print("Width or height cannot be 0.")
-        return
+        if width > 0 and height > 0:
+            # 使用从对话框获取的参数来加载2D图像
+            image_with_rect.display_2d_image(file_path, (width, height), params)
+        else:
+            print("Width or height cannot be 0.")
+            return
 
     '''
     image_with_rect.display_2d_image(file_path,
