@@ -1,11 +1,16 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QFileDialog, QDialog, QVBoxLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QPushButton
+from PyQt5.QtWidgets import (
+    QApplication, QFileDialog, QDialog, QVBoxLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QPushButton, QHBoxLayout
+)
 from PyQt5.QtCore import QTimer
 from TestOpenCV.testPYQTG import create_and_show_image_with_rect
 
 def show_import_dialog():
     dialog = QDialog()
     dialog.setWindowTitle("Import > Raw...")
+
+    # 设置对话框的最小宽度
+    dialog.setMinimumWidth(600)
 
     layout = QVBoxLayout()
 
@@ -21,19 +26,19 @@ def show_import_dialog():
     layout.addWidget(image_type_combo)
 
     # Width and Height inputs
-    width_label = QLabel("Width:")
+    width_label = QLabel("Width (pixels):")
     width_input = QLineEdit()
-    width_input.setPlaceholderText("Enter width, default 0")
-    height_label = QLabel("Height:")
+    width_input.setPlaceholderText("Enter width, can't be 0")
+    height_label = QLabel("Height (pixels):")
     height_input = QLineEdit()
-    height_input.setPlaceholderText("Enter height, default 0")
+    height_input.setPlaceholderText("Enter height, can't be 0")
     layout.addWidget(width_label)
     layout.addWidget(width_input)
     layout.addWidget(height_label)
     layout.addWidget(height_input)
 
     # Offset to first image
-    offset_label = QLabel("Offset to first image:")
+    offset_label = QLabel("Offset to first image (bytes):")
     offset_input = QLineEdit()
     offset_input.setPlaceholderText("Enter offset, default 0")
     layout.addWidget(offset_label)
@@ -47,7 +52,7 @@ def show_import_dialog():
     layout.addWidget(num_images_input)
 
     # Gap between images
-    gap_label = QLabel("Gap between images:")
+    gap_label = QLabel("Gap between images (bytes):")
     gap_input = QLineEdit()
     gap_input.setPlaceholderText("Enter gap, default 0")
     layout.addWidget(gap_label)
@@ -64,10 +69,14 @@ def show_import_dialog():
     layout.addWidget(virtual_stack_checkbox)
 
     # OK and Cancel buttons
+    button_layout = QHBoxLayout()
     button_ok = QPushButton("OK")
     button_cancel = QPushButton("Cancel")
-    layout.addWidget(button_ok)
-    layout.addWidget(button_cancel)
+    button_ok.setFixedWidth(100)  # 设置按钮的宽度
+    button_cancel.setFixedWidth(100)
+    button_layout.addWidget(button_ok)
+    button_layout.addWidget(button_cancel)
+    layout.addLayout(button_layout)
 
     # Set layout and show dialog
     dialog.setLayout(layout)
