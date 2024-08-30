@@ -1,7 +1,98 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QFileDialog
+from PyQt5.QtWidgets import QApplication, QFileDialog, QDialog, QVBoxLayout, QLabel, QComboBox, QLineEdit, QCheckBox, QPushButton
 from PyQt5.QtCore import QTimer
 from TestOpenCV.testPYQTG import create_and_show_image_with_rect
+
+def show_import_dialog():
+    dialog = QDialog()
+    dialog.setWindowTitle("Import > Raw...")
+
+    layout = QVBoxLayout()
+
+    # Image type dropdown
+    image_type_label = QLabel("Image type:")
+    image_type_combo = QComboBox()
+    image_type_combo.addItems([
+        "8-bit", "16-bit Signed", "16-bit Unsigned", "32-bit Signed", "32-bit Unsigned",
+        "32-bit Real", "64-bit Real", "24-bit RGB", "24-bit RGB Planar", "24-bit BGR",
+        "24-bit Integer", "32-bit ARGB", "32-bit ABGR", "1-bit Bitmap"
+    ])
+    layout.addWidget(image_type_label)
+    layout.addWidget(image_type_combo)
+
+    # Width and Height inputs
+    width_label = QLabel("Width:")
+    width_input = QLineEdit()
+    width_input.setPlaceholderText("Enter width, default 0")
+    height_label = QLabel("Height:")
+    height_input = QLineEdit()
+    height_input.setPlaceholderText("Enter height, default 0")
+    layout.addWidget(width_label)
+    layout.addWidget(width_input)
+    layout.addWidget(height_label)
+    layout.addWidget(height_input)
+
+    # Offset to first image
+    offset_label = QLabel("Offset to first image:")
+    offset_input = QLineEdit()
+    offset_input.setPlaceholderText("Enter offset, default 0")
+    layout.addWidget(offset_label)
+    layout.addWidget(offset_input)
+
+    # Number of images
+    num_images_label = QLabel("Number of images:")
+    num_images_input = QLineEdit()
+    num_images_input.setPlaceholderText("Enter number, default 1")
+    layout.addWidget(num_images_label)
+    layout.addWidget(num_images_input)
+
+    # Gap between images
+    gap_label = QLabel("Gap between images:")
+    gap_input = QLineEdit()
+    gap_input.setPlaceholderText("Enter gap, default 0")
+    layout.addWidget(gap_label)
+    layout.addWidget(gap_input)
+
+    # Checkboxes
+    white_zero_checkbox = QCheckBox("White is zero")
+    little_endian_checkbox = QCheckBox("Little-endian byte order")
+    open_all_files_checkbox = QCheckBox("Open all files in folder")
+    virtual_stack_checkbox = QCheckBox("Use virtual stack")
+    layout.addWidget(white_zero_checkbox)
+    layout.addWidget(little_endian_checkbox)
+    layout.addWidget(open_all_files_checkbox)
+    layout.addWidget(virtual_stack_checkbox)
+
+    # OK and Cancel buttons
+    button_ok = QPushButton("OK")
+    button_cancel = QPushButton("Cancel")
+    layout.addWidget(button_ok)
+    layout.addWidget(button_cancel)
+
+    # Set layout and show dialog
+    dialog.setLayout(layout)
+
+    # Handling the button click events
+    button_ok.clicked.connect(dialog.accept)
+    button_cancel.clicked.connect(dialog.reject)
+
+    if dialog.exec_() == QDialog.Accepted:
+        # Capture all the selected values from the dialog
+        params = {
+            'image_type': image_type_combo.currentText(),
+            'width': int(width_input.text()) if width_input.text().strip() != '' else 0,
+            'height': int(height_input.text()) if height_input.text().strip() != '' else 0,
+            'offset': int(offset_input.text()) if offset_input.text().strip() != '' else 0,
+            'num_images': int(num_images_input.text()) if num_images_input.text().strip() != '' else 1,
+            'gap': int(gap_input.text()) if gap_input.text().strip() != '' else 0,
+            'white_zero': white_zero_checkbox.isChecked(),
+            'little_endian': little_endian_checkbox.isChecked(),
+            'open_all_files': open_all_files_checkbox.isChecked(),
+            'virtual_stack': virtual_stack_checkbox.isChecked()
+        }
+        return params
+    else:
+        return None
 
 def handle_click():
     app = QApplication.instance()
@@ -15,8 +106,11 @@ def handle_click():
     if file_path:  # 如果选择了文件
         print(f"Selected file: {file_path}")
 
-        # 延迟加载图像，确保所有UI组件在正确的状态下被访问
-        QTimer.singleShot(0, lambda: create_and_show_image_with_rect(file_path))
+        # 显示Import > Raw...对话框，并获取参数
+        params = show_import_dialog()
+        if params:  # 如果用户点击了OK并选择了参数
+            # 延迟加载图像，确保所有UI组件在正确的状态下被访问
+            QTimer.singleShot(0, lambda: create_and_show_image_with_rect(file_path, params))
 
 if __name__ == "__main__":
     handle_click()
