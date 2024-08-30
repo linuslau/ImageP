@@ -20,6 +20,7 @@ class CustomEllipseItem(QtWidgets.QGraphicsEllipseItem):
         painter.setPen(self.pen())
         painter.drawEllipse(self.rect())  # Use the set rectangle for drawing
 
+
 class CustomSlider(QSlider):
     def wheelEvent(self, event):
         # Do not call the parent class's wheelEvent, as it defaults to +3
@@ -38,6 +39,7 @@ class CustomSlider(QSlider):
         # Update the label
         self.parent().update_label_text(self.value())
         event.accept()
+
 
 class CustomViewBox(pg.ViewBox):
     # Your existing CustomViewBox class implementation
@@ -571,6 +573,7 @@ class ImageWithRect(QWidget):
     def render_3d_image(self):
         # Now use the file_path stored in the class
         subprocess.Popen(['python', '../TestOpenCV/test3DRender.py', self.file_path])
+
     def setup_ui(self):
         # Create custom slider
         self.slider = CustomSlider(Qt.Horizontal)
@@ -600,13 +603,13 @@ class ImageWithRect(QWidget):
         self.layout.addLayout(hbox)
 
         self.render_button = QPushButton("Render 3D")
-        #self.render_button.setFixedSize(100, 40)
+        # self.render_button.setFixedSize(100, 40)
         self.render_button.adjustSize()
         self.render_button.clicked.connect(self.render_3d_image)
 
         # Add the button to your layout
         hbox.addWidget(self.render_button)
-        
+
     def display_2d_image(self, file_path, shape, params):
 
         # 打印出所有传入的参数
@@ -668,9 +671,25 @@ class ImageWithRect(QWidget):
         image = image.reshape(shape)
         return image
 
-    def load_3d_image(self, file_path, shape, dtype=np.float32):
+    def load_3d_image(self, file_path, shape, params, dtype=np.float32):
         image = np.fromfile(file_path, dtype=dtype)
-        image = image.byteswap().newbyteorder()  # Handle little-endian data
+        if params['little_endian'] is True:
+            image = image.byteswap().newbyteorder()  # Handle little-endian data
+        expected_size = np.prod(shape)
+
+        if image.size < expected_size:
+            # 如果数据太少，不足以填充整个形状，则填充0值
+            print(
+                f"Warning: Data size ({image.size}) is smaller than expected shape {shape} ({expected_size}). Padding with zeros.")
+            padding_size = expected_size - image.size
+            image = np.pad(image, (0, padding_size), mode='constant', constant_values=0)
+        elif image.size > expected_size:
+            # 如果数据太多，裁剪数据到目标大小
+            print(
+                f"Warning: Data size ({image.size}) is larger than expected shape {shape} ({expected_size}). Cropping data.")
+            image = image[:expected_size]
+
+        # 重塑数据到目标形状
         image = image.reshape(shape)
         return image
 
@@ -683,7 +702,7 @@ class ImageWithRect(QWidget):
         for key, value in params.items():
             print(f"  {key}: {value}")
 
-        self.image_data = self.load_3d_image(file_path, shape)
+        self.image_data = self.load_3d_image(file_path, shape, params)
         self.is_3d = True
 
         # Initialize the image layer
@@ -760,7 +779,6 @@ class ImageWithRect(QWidget):
         if self.is_3d and self.slider.value() > 0:
             self.slider.setValue(self.slider.value() - 1)
 
-
     def toggle_play_pause(self):
         if self.is_playing:
             self.timer.stop()
@@ -804,7 +822,7 @@ def create_and_show_image_with_rect(file_path, params):
 
     if layers > 1:
         # Load the 3D image if required
-        image_with_rect.display_3d_image(file_path, (height, width, layers), params)
+        image_with_rect.display_3d_image(file_path, (layers, height, width), params)
 
     else:
         if width > 0 and height > 0:
@@ -870,7 +888,6 @@ def on_icon_clicked(index, view):
                 view.start_pos = None
                 view.temp_line = None
             print(f"Shape type set to: {shape_types[index]}")
-
 
 
 if __name__ == '__main__':
