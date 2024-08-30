@@ -552,21 +552,8 @@ class ImageWithRect(QWidget):
 
         self.layout.addWidget(self.label)
 
-        self.image_path = 'boats_720x576_8bits.raw'
-        image = self.load_raw_image(self.image_path, (576, 720))
-        image = np.rot90(image, k=3)
-
-        self.img = pg.ImageItem(image)
-        self.view.setImageData(image, self.img)
-
-        self.plot_item.addItem(self.img)
-
-        self.setWindowTitle(os.path.basename(self.image_path))  # Set window title to file name
-
-        # Add histogram LUT item for the right-side panel
-        self.histogram_lut = pg.HistogramLUTItem()
-        self.histogram_lut.setImageItem(self.img)
-        self.graphics_widget.addItem(self.histogram_lut)
+        self.img = None  # Initialize img as None, to be set later in display_2d_image
+        self.histogram_lut = None
 
         self.slider = None
         self.is_3d = False
@@ -580,6 +567,7 @@ class ImageWithRect(QWidget):
 
         # Connect mouse move signal
         self.plot_item.scene().sigMouseMoved.connect(self.on_mouse_move)
+
     def render_3d_image(self):
         # Now use the file_path stored in the class
         subprocess.Popen(['python', '../TestOpenCV/test3DRender.py', self.file_path])
@@ -618,6 +606,37 @@ class ImageWithRect(QWidget):
 
         # Add the button to your layout
         hbox.addWidget(self.render_button)
+        
+    def display_2d_image(self, file_path, shape):
+        """Dynamically load and display a 2D image."""
+        image = self.load_raw_image(file_path, shape)
+        image = np.rot90(image, k=3)
+        state_manager.set_image_data(image)
+
+        self.img = pg.ImageItem(image)
+        self.view.setImageData(image, self.img)
+
+        self.plot_item.addItem(self.img)
+        self.setWindowTitle(os.path.basename(file_path))  # Set window title to file name
+
+        # Add histogram LUT item for the right-side panel
+        if self.histogram_lut is None:
+            self.histogram_lut = pg.HistogramLUTItem()
+            self.histogram_lut.setImageItem(self.img)
+            self.graphics_widget.addItem(self.histogram_lut)
+
+        # Save the image data to state_manager
+        state_manager.set_image_data(image)
+
+    def update_image_with_data(self, image_data):
+        """Update the currently displayed image with new data."""
+        if self.img is not None:
+            self.img.setImage(image_data)
+            # Update the display
+            self.view.update()
+            print("Image updated successfully")
+        else:
+            print("Image item not initialized")
 
     def load_raw_image(self, file_path, shape, dtype=np.uint8):
         image = np.fromfile(file_path, dtype=dtype)
@@ -656,7 +675,8 @@ class ImageWithRect(QWidget):
             total_layers = self.image_data.shape[0]
             i, j = 0, 0  # assuming the top-left pixel for this example
             val = self.image_data[layer, i, j]
-            self.label.setText(f"pos: ({j:.1f}, {i:.1f})  pixel: ({i}, {j})  layer: {layer + 1}/{total_layers}  value: {val:.4f}")
+            self.label.setText(
+                f"pos: ({j:.1f}, {i:.1f})  pixel: ({i}, {j})  layer: {layer + 1}/{total_layers}  value: {val:.4f}")
 
     def on_mouse_move(self, pos):
         self.view.on_mouse_move(pos)
@@ -671,7 +691,8 @@ class ImageWithRect(QWidget):
             j = np.clip(j, 0, self.image_data.shape[2] - 1)
             val = self.image_data[layer, i, j]
             total_layers = self.image_data.shape[0]
-            self.label.setText(f"pos: ({pos.x():.1f}, {pos.y():.1f})  pixel: ({i}, {j})  layer: {layer + 1}/{total_layers}  value: {val:.4f}")
+            self.label.setText(
+                f"pos: ({pos.x():.1f}, {pos.y():.1f})  pixel: ({i}, {j})  layer: {layer + 1}/{total_layers}  value: {val:.4f}")
         else:
             i = np.clip(i, 0, self.view.image_data.shape[0] - 1)
             j = np.clip(j, 0, self.view.image_data.shape[1] - 1)
@@ -693,10 +714,13 @@ class ImageWithRect(QWidget):
     def increase_layer(self):
         if self.is_3d and self.slider.value() < self.slider.maximum():
             self.slider.setValue(self.slider.value() + 1)
+        else:
+            self.slider.setValue(0)  # Loop back to the first layer
 
     def decrease_layer(self):
         if self.is_3d and self.slider.value() > 0:
             self.slider.setValue(self.slider.value() - 1)
+
 
     def toggle_play_pause(self):
         if self.is_playing:
@@ -710,6 +734,7 @@ class ImageWithRect(QWidget):
     def play_next_layer(self):
         if self.slider.value() < self.slider.maximum():
             self.slider.setValue(self.slider.value() + 1)
+        # Note, else branch, not tested.
         else:
             self.slider.setValue(0)  # Loop back to the first layer
 
@@ -723,6 +748,7 @@ def create_and_show_image_with_rect(file_path):
         created_app = False
 
     image_with_rect = ImageWithRect(file_path)
+    state_manager.set_image_with_rect_instance(image_with_rect);
 
     selected_shape_type = state_manager.get_shape_type()
     clear_previous_lines = state_manager.get_clear_previous_lines()
@@ -731,8 +757,11 @@ def create_and_show_image_with_rect(file_path):
     image_with_rect.view.shape_type = selected_shape_type
     image_with_rect.view.clear_lines()
 
+    image_with_rect.file_path = file_path
     # Load the 3D image if required
-    image_with_rect.display_3d_image(file_path, (384, 384, 384))
+    # image_with_rect.display_3d_image(file_path, (384, 384, 384))
+
+    image_with_rect.display_2d_image(file_path, (576, 720))
 
     # Connect to main window signal if main window is present
     main_window = QtWidgets.QApplication.instance().activeWindow()

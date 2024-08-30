@@ -4,6 +4,7 @@ import threading
 from PyQt5.QtWidgets import QAction
 from PyQt5.QtGui import QIcon, QPixmap, QKeySequence
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
+from ImageP.utils.state_manager import state_manager
 
 class IconManager(QObject):
     icon_clicked = pyqtSignal(int)  # Signal to notify icon index
@@ -230,6 +231,21 @@ def handle_menu_click(main_window, file_path):
         if hasattr(module_spec, 'menu_click_thread') or hasattr(module_spec, 'handle_click_thread'):
             async_thread = threading.Thread(target=run_async_tasks)
             async_thread.start()
+
+        async def process_and_update_ui():
+            image_data = state_manager.get_image_data()
+            inverted_image = None
+            if hasattr(module_spec, 'process_image_async'):
+                print("Starting async task for menu_click_async")
+                inverted_image = await module_spec.process_image_async(image_data)
+            # 更新图像数据到全局状态管理器中
+            state_manager.set_image_data(inverted_image)
+            image_with_rect = state_manager.get_image_with_rect_instance()
+            image_with_rect.update_image_with_data(inverted_image)
+
+        if hasattr(module_spec, 'process_image_async'):
+            # 开始异步处理图片并更新UI
+            loop.create_task(process_and_update_ui())
 
     except ModuleNotFoundError as e:
         print(f"Module not found: {e}")
