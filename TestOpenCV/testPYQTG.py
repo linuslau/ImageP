@@ -70,6 +70,7 @@ class CustomViewBox(pg.ViewBox):
         self.moved = False  # Track if the mouse has moved
         self.dragging_line = False
         self.preserve_previous_lines = True  # Flag to preserve previous lines
+        self.shape_items = {}  # 字典，用于存储不同形状类型的图形项
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -123,12 +124,15 @@ class CustomViewBox(pg.ViewBox):
             if self.shape_type == 'dynamic_line' or self.last_shape_type == 'dynamic_line':
                 items = self.allChildItems()
                 for item in items:
-                    if isinstance(item, QtWidgets.QGraphicsLineItem) or isinstance(item,
-                                                                                   QtWidgets.QGraphicsEllipseItem):
+                    if isinstance(item, QtWidgets.QGraphicsLineItem) or isinstance(item, QtWidgets.QGraphicsEllipseItem):
                         self.removeItem(item)
             else:
                 for item in self.dynamic_lines:
                     self.removeItem(item)
+                if self.last_shape_type in self.shape_items:
+                    for item in self.shape_items[self.last_shape_type]:
+                        self.removeItem(item)
+                    del self.shape_items[self.last_shape_type]
 
             self.dynamic_lines.clear()
             self.polygon_points.clear()
@@ -309,6 +313,12 @@ class CustomViewBox(pg.ViewBox):
                 self.shape_item = QtWidgets.QGraphicsEllipseItem(QtCore.QRectF(self.start_pos, self.start_pos))
             self.shape_item.setPen(pg.mkPen(color='r', width=2))
             self.addItem(self.shape_item)
+
+            # 将当前的图形项添加到对应形状类型的列表中
+            if self.shape_type not in self.shape_items:
+                self.shape_items[self.shape_type] = []
+            self.shape_items[self.shape_type].append(self.shape_item)
+
             if self.shape_type not in ["rectangle", "ellipse"]:
                 self.updateControlPoints()
 
