@@ -69,6 +69,7 @@ class CustomViewBox(pg.ViewBox):
         self.current_index = -1
         self.moved = False  # Track if the mouse has moved
         self.dragging_line = False
+        self.preserve_previous_lines = True  # Flag to preserve previous lines
 
     def setImageData(self, image_data, image_item):
         self.image_data = image_data
@@ -116,23 +117,27 @@ class CustomViewBox(pg.ViewBox):
             self.addItem(control_item)
             self.control_items.append(control_item)
 
-    def clear_lines(self):
-        """清除所有绘制的线条"""
-        if self.shape_type == 'dynamic_line' or self.last_shape_type == 'dynamic_line':
-            items = self.allChildItems()
-            for item in items:
-                if isinstance(item, QtWidgets.QGraphicsLineItem) or isinstance(item, QtWidgets.QGraphicsEllipseItem):
+    def clear_lines(self, force_clear=False):
+        """根据需求清除所有绘制的线条，如果force_clear为True则强制清除"""
+        if force_clear or (self.shape_type != self.last_shape_type and not self.preserve_previous_lines):
+            if self.shape_type == 'dynamic_line' or self.last_shape_type == 'dynamic_line':
+                items = self.allChildItems()
+                for item in items:
+                    if isinstance(item, QtWidgets.QGraphicsLineItem) or isinstance(item,
+                                                                                   QtWidgets.QGraphicsEllipseItem):
+                        self.removeItem(item)
+            else:
+                for item in self.dynamic_lines:
                     self.removeItem(item)
-        else:
-            for item in self.dynamic_lines:
-                self.removeItem(item)
 
-        self.dynamic_lines.clear()
-        self.polygon_points.clear()
-        if self.shape_item:
-            self.removeItem(self.shape_item)
-            self.shape_item = None
-        self.updateControlPoints()
+            self.dynamic_lines.clear()
+            self.polygon_points.clear()
+            if self.shape_item:
+                self.removeItem(self.shape_item)
+                self.shape_item = None
+            self.updateControlPoints()
+
+        self.last_shape_type = self.shape_type  # 更新last_shape_type
 
     def mousePressEvent(self, event):
         pos = event.pos()
@@ -289,9 +294,13 @@ class CustomViewBox(pg.ViewBox):
                 self.start_pos = view_pos
                 self.dragging = True
             else:
-                self.removeItem(self.shape_item)
-                self.shape_item = None
-
+                # 仅在需要删除图形的情况下执行删除操作
+                if not self.preserve_previous_lines:
+                    self.removeItem(self.shape_item)
+                    self.shape_item = None
+                else:
+                    # 如果不需要删除图形，仅将 shape_item 设置为 None
+                    self.shape_item = None
         if self.shape_item is None:
             self.start_pos = self.mapToView(pos)
             if self.shape_type == "rectangle":
@@ -874,7 +883,7 @@ def on_icon_clicked(index, view):
             # Switch shape type
             view.last_shape_type = view.shape_type
             view.shape_type = shape_types[index]
-            view.clear_lines()  # Clear lines when switching shapes
+            view.clear_lines(force_clear=True)  # 强制清除线条
             view.current_index = index
             view.clear_previous_lines = False
             if view.shape_type == "dynamic_polygon":
@@ -891,4 +900,19 @@ def on_icon_clicked(index, view):
 
 
 if __name__ == '__main__':
-    create_and_show_image_with_rect()
+    file_path = "boats_720x576_8bits.raw"  # 文件路径，确保文件在同一目录下，或提供完整路径
+
+    params = {
+        'image_type': '8-bit',  # 硬编码的图像类型
+        'width': 720,  # 图像宽度
+        'height': 576,  # 图像高度
+        'offset': 0,  # 起始偏移
+        'num_images': 1,  # 图像数量
+        'gap': 0,  # 图像之间的间隙
+        'white_zero': False,  # 白色是否为零
+        'little_endian': False,  # 字节顺序
+        'open_all_files': False,  # 是否打开文件夹中的所有文件
+        'virtual_stack': False  # 是否使用虚拟栈
+    }
+
+    create_and_show_image_with_rect(file_path, params)
