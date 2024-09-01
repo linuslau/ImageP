@@ -131,7 +131,8 @@ class CustomViewBox(pg.ViewBox):
                     self.removeItem(item)
                 if self.last_shape_type in self.shape_items:
                     for item in self.shape_items[self.last_shape_type]:
-                        self.removeItem(item)
+                        if item is not None:  # 检查 item 是否为 None
+                            self.removeItem(item)
                     del self.shape_items[self.last_shape_type]
 
             self.dynamic_lines.clear()
@@ -150,10 +151,36 @@ class CustomViewBox(pg.ViewBox):
         print(f"Mouse pressed at: {view_pos}, Button: {event.button()}")  # Debug information
 
         if event.button() == QtCore.Qt.RightButton:
+            if self.shape_type == "polygon" and self.polygon_points:
+                # 用户右击鼠标时，结束当前的多边形
+                self.completePolygon()
+                return
+
             if self.shape_item is not None and self.shape_item.contains(view_pos):
                 self.showCustomContextMenu(event)
             else:
                 super().mousePressEvent(event)
+            return
+
+        if self.shape_type == "polygon":
+            if event.button() == QtCore.Qt.LeftButton:
+                self.polygon_points.append(view_pos)
+                if len(self.polygon_points) > 1:
+                    if self.shape_item is not None:
+                        self.removeItem(self.shape_item)
+                    self.shape_item = QtWidgets.QGraphicsPolygonItem(QtGui.QPolygonF(self.polygon_points))
+                    self.shape_item.setPen(pg.mkPen(color='r', width=2))
+                    self.addItem(self.shape_item)
+                else:
+                    self.shape_item = None
+
+                # 更新控制点，以确保显示在多边形的顶点上
+                self.updateControlPoints()
+
+                # 将当前的图形项添加到对应形状类型的列表中
+                if self.shape_type not in self.shape_items:
+                    self.shape_items[self.shape_type] = []
+                self.shape_items[self.shape_type].append(self.shape_item)
             return
 
         # Clear the previous control points when starting a new drawing or upon clicking
