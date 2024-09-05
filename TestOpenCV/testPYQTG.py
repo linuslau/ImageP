@@ -156,6 +156,14 @@ class CustomViewBox(pg.ViewBox):
                 self.completePolygon()
                 return
 
+            # Check if right-click is inside any previously drawn shapes (rectangle or ellipse)
+            for shape_type, shape_list in self.shape_items.items():
+                for shape_item in shape_list:
+                    if shape_item.contains(view_pos):
+                        self.shape_item = shape_item  # Set the shape item for deletion
+                        self.showCustomContextMenu(event)
+                        return
+
             if self.shape_item is not None and self.shape_item.contains(view_pos):
                 self.showCustomContextMenu(event)
             else:
@@ -488,9 +496,30 @@ class CustomViewBox(pg.ViewBox):
             for item in self.dynamic_lines:
                 self.removeItem(item)
             self.dynamic_lines.clear()
+    def deleteCurrentShape(self):
+        """Delete the current shape if one is selected."""
+        if self.shape_item is not None:
+            # Remove the shape item from the scene
+            self.removeItem(self.shape_item)
+
+            # Remove the shape from the `shape_items` dictionary
+            if self.shape_type in self.shape_items:
+                if self.shape_item in self.shape_items[self.shape_type]:
+                    self.shape_items[self.shape_type].remove(self.shape_item)
+
+            # Clear the current shape item
+            self.shape_item = None
+
+            # Update control points and view
+            self.updateControlPoints()
+            print("Shape deleted.")
+        else:
+            print("No shape selected to delete.")
 
     def showCustomContextMenu(self, event):
         menu = QtWidgets.QMenu()
+
+        # Add row properties, measure, and invert options
         row_properties_action = menu.addAction("ROW Properties")
         row_properties_action.triggered.connect(self.showRowPropertiesDialog)
 
@@ -500,6 +529,11 @@ class CustomViewBox(pg.ViewBox):
         invert_action = menu.addAction("Invert")
         invert_action.triggered.connect(self.invertImage)
 
+        # Add Delete option
+        delete_action = menu.addAction("Delete")
+        delete_action.triggered.connect(self.deleteCurrentShape)  # Connect to deletion method
+
+        # Show the menu at the cursor position
         menu.exec_(event.screenPos())
 
     def showRowPropertiesDialog(self):
