@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QAction
 from PyQt5.QtGui import QIcon, QPixmap, QKeySequence
 from PyQt5.QtCore import Qt, pyqtSignal, QObject
 from ImageP.utils.state_manager import state_manager
+from PyQt5.QtWidgets import QMessageBox
 
 class IconManager(QObject):
     icon_clicked = pyqtSignal(int)  # Signal to notify icon index
@@ -240,10 +241,33 @@ def handle_menu_click(main_window, file_path):
             if len(image_data.shape) == 3:  # 3D图像
                 # 获取当前选中的图层索引
                 current_layer = state_manager.get_image_with_rect_instance().slider.value()
-                print(f"Processing 3D image, layer {current_layer}")
 
-                if hasattr(module_spec, 'process_image_async'):
-                    # 获取当前图层并处理
+                # 弹出对话框
+                msg_box = QMessageBox()
+                msg_box.setWindowTitle("Process Stack?")
+                msg_box.setText(f"Process all {image_data.shape[0]} images? There is no Undo if you select 'Yes'.")
+                msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+                msg_box.setDefaultButton(QMessageBox.No)
+                ret = msg_box.exec_()
+
+                if ret == QMessageBox.Yes:
+                    # 用户选择Yes，处理所有图层
+                    print("Processing all layers of the 3D image...")
+                    for layer in range(image_data.shape[0]):
+                        current_layer_image = image_data[layer]
+                        inverted_image_layer = await module_spec.process_image_async(current_layer_image)
+                        image_data[layer] = inverted_image_layer  # 更新每一层
+
+                    state_manager.set_image_data(image_data)
+                    image_with_rect = state_manager.get_image_with_rect_instance()
+
+                    # 更新UI显示用户最初选择的图层，而不是跳到第一层
+                    image_with_rect.update_image_with_data(image_data[current_layer])
+                    image_with_rect.slider.setValue(current_layer)  # 保持slider选中的图层
+
+                elif ret == QMessageBox.No:
+                    # 用户选择No，只处理当前选中的图层
+                    print(f"Processing current layer {current_layer} of the 3D image...")
                     current_layer_image = image_data[current_layer]
                     inverted_image_layer = await module_spec.process_image_async(current_layer_image)
 

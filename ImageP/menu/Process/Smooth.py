@@ -31,7 +31,7 @@ def handle_click_thread():
 
 async def process_image_async(image_data):
     print("process_image_async enter")
-    await asyncio.sleep(5)  # 模拟耗时操作
+    # await asyncio.sleep(5)  # 模拟耗时操作
     if image_data is None:
         raise ValueError("Image data is None. Cannot perform inversion.")
 
