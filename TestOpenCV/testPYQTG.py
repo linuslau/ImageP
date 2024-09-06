@@ -785,6 +785,9 @@ class ImageWithRect(QWidget):
         self.image_data = self.load_3d_image(file_path, shape, params)
         self.is_3d = True
 
+        # Save the 3D image data to state_manager
+        state_manager.set_image_data(self.image_data)  # 这里将3D图像保存到state_manager
+
         # Initialize the image layer
         image_layer = self.image_data[0, :, :]
 

@@ -233,15 +233,38 @@ def handle_menu_click(main_window, file_path):
             async_thread.start()
 
         async def process_and_update_ui():
-            image_data = state_manager.get_image_data()
+            image_data = state_manager.get_image_data()  # 获取当前图像数据
             inverted_image = None
-            if hasattr(module_spec, 'process_image_async'):
-                print("Starting async task for menu_click_async")
-                inverted_image = await module_spec.process_image_async(image_data)
-            # 更新图像数据到全局状态管理器中
-            state_manager.set_image_data(inverted_image)
-            image_with_rect = state_manager.get_image_with_rect_instance()
-            image_with_rect.update_image_with_data(inverted_image)
+
+            # 判断是2D还是3D图像
+            if len(image_data.shape) == 3:  # 3D图像
+                # 获取当前选中的图层索引
+                current_layer = state_manager.get_image_with_rect_instance().slider.value()
+                print(f"Processing 3D image, layer {current_layer}")
+
+                if hasattr(module_spec, 'process_image_async'):
+                    # 获取当前图层并处理
+                    current_layer_image = image_data[current_layer]
+                    inverted_image_layer = await module_spec.process_image_async(current_layer_image)
+
+                    # 更新3D图像中的当前图层
+                    image_data[current_layer] = inverted_image_layer
+
+                    # 更新UI，显示当前处理后的图层
+                    state_manager.set_image_data(image_data)
+                    image_with_rect = state_manager.get_image_with_rect_instance()
+                    image_with_rect.update_image_with_data(image_data[current_layer])
+
+            elif len(image_data.shape) == 2:  # 2D图像
+                print("Processing 2D image")
+                if hasattr(module_spec, 'process_image_async'):
+                    # 直接处理2D图像
+                    inverted_image = await module_spec.process_image_async(image_data)
+
+                    # 更新图像数据到全局状态管理器中
+                    state_manager.set_image_data(inverted_image)
+                    image_with_rect = state_manager.get_image_with_rect_instance()
+                    image_with_rect.update_image_with_data(inverted_image)
 
         if hasattr(module_spec, 'process_image_async'):
             # 开始异步处理图片并更新UI
