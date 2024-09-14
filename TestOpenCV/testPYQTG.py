@@ -700,7 +700,7 @@ class ImageWithRect(QWidget):
             print(f"  {key}: {value}")
 
         """Dynamically load and display a 2D image."""
-        image = self.load_raw_image(file_path, shape)
+        image = self.load_2d_image(file_path, shape)
         image = np.rot90(image, k=3)
         state_manager.set_image_data(image)
 
@@ -729,7 +729,7 @@ class ImageWithRect(QWidget):
         else:
             print("Image item not initialized")
 
-    def load_raw_image(self, file_path, shape, dtype=np.uint8):
+    def load_2d_image(self, file_path, shape, dtype=np.uint8):
         image = np.fromfile(file_path, dtype=dtype)
 
         # 计算目标形状的总大小
@@ -773,6 +773,11 @@ class ImageWithRect(QWidget):
         image = image.reshape(shape)
         return image
 
+    def clean_image_data(self, image):
+        # 将所有 NaN 值替换为 0，正无穷替换为 255，负无穷替换为 0
+        image = np.nan_to_num(image, nan=0.0, posinf=255, neginf=0.0)
+        return image
+
     def display_3d_image(self, file_path, shape, params):
 
         # 打印出所有传入的参数
@@ -783,6 +788,10 @@ class ImageWithRect(QWidget):
             print(f"  {key}: {value}")
 
         self.image_data = self.load_3d_image(file_path, shape, params)
+
+        # 清理 3D 图像数据，确保没有无效值
+        self.image_data = self.clean_image_data(self.image_data)
+
         self.is_3d = True
 
         # Save the 3D image data to state_manager
