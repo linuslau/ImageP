@@ -613,7 +613,7 @@ class CustomViewBox(pg.ViewBox):
 
 
 class ImageWithRect(QWidget):
-    def __init__(self, file_path):
+    def __init__(self, file_path, is_3d = False):
         super().__init__()
 
         self.file_path = file_path  # Store the file_path for later use
@@ -638,12 +638,13 @@ class ImageWithRect(QWidget):
         self.histogram_lut = None
 
         self.slider = None
-        self.is_3d = False
+        self.is_3d = is_3d
         self.is_playing = False  # Track the play/pause state
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.play_next_layer)
 
-        self.setup_ui()
+        if self.is_3d:
+            self.setup_ui()
 
         self.resize(1600, 1200)
 
@@ -896,7 +897,12 @@ def create_and_show_image_with_rect(file_path, params):
     else:
         created_app = False
 
-    image_with_rect = ImageWithRect(file_path)
+    is_3d_image = params['num_images'] > 1
+    if is_3d_image:
+        image_with_rect = ImageWithRect(file_path, is_3d_image)
+    else:
+        image_with_rect = ImageWithRect(file_path)
+
     state_manager.set_image_with_rect_instance(image_with_rect);
 
     selected_shape_type = state_manager.get_shape_type()
