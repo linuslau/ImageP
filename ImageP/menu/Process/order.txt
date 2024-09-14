@@ -12,5 +12,7 @@ Filters
 -
 Batch
 Image Calculator.py
-Subtract Background
-Repeat Command
+Subtract Background.py
+Repeat Command.py
+-
+Reference.py
