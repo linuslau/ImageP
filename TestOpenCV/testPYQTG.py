@@ -691,6 +691,26 @@ class ImageWithRect(QWidget):
         # Add the button to your layout
         hbox.addWidget(self.render_button)
 
+    def get_numpy_dtype(self, image_type):
+        dtype_map = {
+            "8-bit": np.uint8,
+            "16-bit Signed": np.int16,
+            "16-bit Unsigned": np.uint16,
+            "32-bit Signed": np.int32,
+            "32-bit Unsigned": np.uint32,
+            "32-bit Real": np.float32,
+            "64-bit Real": np.float64,
+            "24-bit RGB": np.uint8,  # 通常RGB是每个通道8位，所以返回np.uint8
+            "24-bit RGB Planar": np.uint8,  # 和24-bit RGB类似
+            "24-bit BGR": np.uint8,  # 和RGB相似，只是通道顺序不同
+            "24-bit Integer": np.int32,
+            "32-bit ARGB": np.uint8,  # ARGB通常每个通道8位
+            "32-bit ABGR": np.uint8,  # ABGR和ARGB类似
+            "1-bit Bitmap": np.bool_  # 1位图像可以用布尔值表示
+        }
+
+        return dtype_map.get(image_type, None)  # 如果没有匹配，返回None
+
     def display_2d_image(self, file_path, shape, params):
 
         # 打印出所有传入的参数
@@ -753,32 +773,66 @@ class ImageWithRect(QWidget):
 
         self.image_data = self.load_3d_image(file_path, shape, params)
 
+        if self.image_data.shape[0] > 1:
+            self.is_3d = True
+
         # 清理 3D 图像数据，确保没有无效值
         self.image_data = self.clean_image_data(self.image_data)
-
-        self.is_3d = True
 
         # Save the 3D image data to state_manager
         state_manager.set_image_data(self.image_data)  # 这里将3D图像保存到state_manager
 
         # Initialize the image layer
         image_layer = self.image_data[0, :, :]
+        image_layer = np.rot90(image_layer, k=3)
 
         # If img is None, initialize it
         if self.img is None:
             self.img = pg.ImageItem(image_layer)
+            self.view.setImageData(image_layer, self.img)
             self.plot_item.addItem(self.img)
         else:
             self.img.setImage(image_layer)
 
+        self.setWindowTitle(os.path.basename(file_path))  # Set window title to file name
+
+        # Add histogram LUT item for the right-side panel
+        if self.histogram_lut is None:
+            self.histogram_lut = pg.HistogramLUTItem()
+            self.histogram_lut.setImageItem(self.img)
+            self.graphics_widget.addItem(self.histogram_lut)
+
+        def adjust_page_step(slider_min, slider_max):
+            # 计算滑块的范围
+            range_value = slider_max - slider_min
+
+            # 根据范围动态调整 pageStep
+            if range_value <= 10:
+                return 2
+            elif range_value <= 50:
+                return 5
+            elif range_value <= 100:
+                return 10
+            elif range_value <= 500:
+                return 20
+            else:
+                return 50  # 对于更大的范围，设定一个较大的步长
+
         # Set slider range
-        self.slider.setRange(0, shape[0] - 1)
+        if self.slider:
+            self.slider.setRange(0, shape[0] - 1)
+            page_step = adjust_page_step(0, shape[0] - 1)
+            self.slider.setSingleStep(1)
+            self.slider.setPageStep(page_step)
 
         # Update label with initial layer
         self.update_label_text(0)
 
     def load_3d_image(self, file_path, shape, params, dtype=np.float32):
-        image = np.fromfile(file_path, dtype=dtype)
+        image_type = params['image_type']
+        type = self.get_numpy_dtype(image_type)
+        image = np.fromfile(file_path, dtype=type)
+
         if params['little_endian'] is True:
             image = image.byteswap().newbyteorder()  # Handle little-endian data
         expected_size = np.prod(shape)
@@ -917,28 +971,8 @@ def create_and_show_image_with_rect(file_path, params):
     width = params['width']
     height = params['height']
 
-    if layers > 1:
-        # Load the 3D image if required
-        image_with_rect.display_3d_image(file_path, (layers, height, width), params)
-
-    else:
-        if width > 0 and height > 0:
-            # 使用从对话框获取的参数来加载2D图像
-            image_with_rect.display_2d_image(file_path, (height, width), params)
-        else:
-            print("Width or height cannot be 0.")
-            return
-
-    '''
-    image_with_rect.display_2d_image(file_path,
-                                     (params['width'], params['height']),
-                                     params['image_type'],
-                                     params['offset'],
-                                     params['num_images'],
-                                     params['gap'],
-                                     params['white_zero'],
-                                     params['little_endian'])
-    '''
+    # Unified 2D and 3D image handling: all images now processed through 3D functions
+    image_with_rect.display_3d_image(file_path, (layers, height, width), params)
 
     # Connect to main window signal if main window is present
     main_window = QtWidgets.QApplication.instance().activeWindow()
