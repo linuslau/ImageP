@@ -720,16 +720,6 @@ class ImageWithRect(QWidget):
         # Save the image data to state_manager
         state_manager.set_image_data(image)
 
-    def update_image_with_data(self, image_data):
-        """Update the currently displayed image with new data."""
-        if self.img is not None:
-            self.img.setImage(image_data)
-            # Update the display
-            self.view.update()
-            print("Image updated successfully")
-        else:
-            print("Image item not initialized")
-
     def load_2d_image(self, file_path, shape, dtype=np.uint8):
         image = np.fromfile(file_path, dtype=dtype)
 
@@ -750,33 +740,6 @@ class ImageWithRect(QWidget):
 
         # 重塑数据到目标形状
         image = image.reshape(shape)
-        return image
-
-    def load_3d_image(self, file_path, shape, params, dtype=np.float32):
-        image = np.fromfile(file_path, dtype=dtype)
-        if params['little_endian'] is True:
-            image = image.byteswap().newbyteorder()  # Handle little-endian data
-        expected_size = np.prod(shape)
-
-        if image.size < expected_size:
-            # 如果数据太少，不足以填充整个形状，则填充0值
-            print(
-                f"Warning: Data size ({image.size}) is smaller than expected shape {shape} ({expected_size}). Padding with zeros.")
-            padding_size = expected_size - image.size
-            image = np.pad(image, (0, padding_size), mode='constant', constant_values=0)
-        elif image.size > expected_size:
-            # 如果数据太多，裁剪数据到目标大小
-            print(
-                f"Warning: Data size ({image.size}) is larger than expected shape {shape} ({expected_size}). Cropping data.")
-            image = image[:expected_size]
-
-        # 重塑数据到目标形状
-        image = image.reshape(shape)
-        return image
-
-    def clean_image_data(self, image):
-        # 将所有 NaN 值替换为 0，正无穷替换为 255，负无穷替换为 0
-        image = np.nan_to_num(image, nan=0.0, posinf=255, neginf=0.0)
         return image
 
     def display_3d_image(self, file_path, shape, params):
@@ -813,6 +776,42 @@ class ImageWithRect(QWidget):
 
         # Update label with initial layer
         self.update_label_text(0)
+
+    def load_3d_image(self, file_path, shape, params, dtype=np.float32):
+        image = np.fromfile(file_path, dtype=dtype)
+        if params['little_endian'] is True:
+            image = image.byteswap().newbyteorder()  # Handle little-endian data
+        expected_size = np.prod(shape)
+
+        if image.size < expected_size:
+            # 如果数据太少，不足以填充整个形状，则填充0值
+            print(
+                f"Warning: Data size ({image.size}) is smaller than expected shape {shape} ({expected_size}). Padding with zeros.")
+            padding_size = expected_size - image.size
+            image = np.pad(image, (0, padding_size), mode='constant', constant_values=0)
+        elif image.size > expected_size:
+            # 如果数据太多，裁剪数据到目标大小
+            print(
+                f"Warning: Data size ({image.size}) is larger than expected shape {shape} ({expected_size}). Cropping data.")
+            image = image[:expected_size]
+
+        # 重塑数据到目标形状
+        image = image.reshape(shape)
+        return image
+    def update_image_with_data(self, image_data):
+        """Update the currently displayed image with new data."""
+        if self.img is not None:
+            self.img.setImage(image_data)
+            # Update the display
+            self.view.update()
+            print("Image updated successfully")
+        else:
+            print("Image item not initialized")
+
+    def clean_image_data(self, image):
+        # 将所有 NaN 值替换为 0，正无穷替换为 255，负无穷替换为 0
+        image = np.nan_to_num(image, nan=0.0, posinf=255, neginf=0.0)
+        return image
 
     def update_image_layer(self, value):
         if self.is_3d:
