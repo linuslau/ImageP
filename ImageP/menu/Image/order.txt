@@ -1,0 +1,18 @@
+Type
+-
+Adjust
+Show Info.py
+Properties.py
+Color
+Stacks
+Hyperstacks
+-
+Crop.py
+Duplicate.py
+Rename.py
+Scale.py
+Transform
+Zoom
+Overlay
+-
+Lookup Tables
