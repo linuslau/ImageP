@@ -646,7 +646,7 @@ class ImageWithRect(QWidget):
         if self.is_3d:
             self.setup_ui()
 
-        self.resize(1600, 1200)
+        self.resize(900, 900)
 
         # Connect mouse move signal
         self.plot_item.scene().sigMouseMoved.connect(self.on_mouse_move)
