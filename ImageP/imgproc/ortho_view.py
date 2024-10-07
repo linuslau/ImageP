@@ -15,6 +15,7 @@ class OrthogonalViewWidget(QWidget):
         self.center_x_idx = self.shape[2] // 2
         self.center_y_idx = self.shape[1] // 2
         self.center_z_idx = self.shape[0] // 2
+        self.mouse_pressed = False  # 标记鼠标是否按下
 
         # 创建显示正交视图的图形布局
         self.xy_widget = pg.GraphicsLayoutWidget()
@@ -113,6 +114,11 @@ class OrthogonalViewWidget(QWidget):
         self.xz_plot.scene().sigMouseClicked.connect(self.on_mouse_click)
         self.yz_plot.scene().sigMouseClicked.connect(self.on_mouse_click)
 
+        # 监听鼠标事件：按下、移动、释放
+        self.xy_plot.scene().installEventFilter(self)
+        self.xz_plot.scene().installEventFilter(self)
+        self.yz_plot.scene().installEventFilter(self)
+
         # 居中显示窗口
         self.showEvent(None)  # 使用showEvent
 
@@ -179,6 +185,67 @@ class OrthogonalViewWidget(QWidget):
 
         # 更新十字线位置
         self.update_crosshairs(x_idx, y_idx, z_idx)
+
+    # 事件过滤器中，明确禁用左击拖动
+    def eventFilter(self, obj, event):
+        """处理鼠标事件"""
+        if event.type() == pg.QtCore.QEvent.GraphicsSceneMousePress:
+            if event.button() == Qt.LeftButton:
+                # 鼠标左键按下，标记为 True
+                self.mouse_pressed = True
+                # 禁用左键拖动功能
+                if obj == self.xy_plot.scene():
+                    self.xy_plot.getViewBox().setMouseEnabled(x=False, y=False)
+                elif obj == self.xz_plot.scene():
+                    self.xz_plot.getViewBox().setMouseEnabled(x=False, y=False)
+                elif obj == self.yz_plot.scene():
+                    self.yz_plot.getViewBox().setMouseEnabled(x=False, y=False)
+            elif event.button() == Qt.RightButton:
+                # 鼠标右键按下，启用拖动功能
+                if obj == self.xy_plot.scene():
+                    self.xy_plot.getViewBox().setMouseEnabled(x=True, y=True)
+                elif obj == self.xz_plot.scene():
+                    self.xz_plot.getViewBox().setMouseEnabled(x=True, y=True)
+                elif obj == self.yz_plot.scene():
+                    self.yz_plot.getViewBox().setMouseEnabled(x=True, y=True)
+
+        elif event.type() == pg.QtCore.QEvent.GraphicsSceneMouseRelease:
+            if event.button() == Qt.LeftButton:
+                # 鼠标左键释放，允许其他功能
+                self.mouse_pressed = False
+                if obj == self.xy_plot.scene():
+                    self.xy_plot.getViewBox().setMouseEnabled(x=True, y=True)
+                elif obj == self.xz_plot.scene():
+                    self.xz_plot.getViewBox().setMouseEnabled(x=True, y=True)
+                elif obj == self.yz_plot.scene():
+                    self.yz_plot.getViewBox().setMouseEnabled(x=True, y=True)
+
+        elif event.type() == pg.QtCore.QEvent.GraphicsSceneMouseMove and self.mouse_pressed:
+            # 鼠标移动逻辑保持不变，只处理十字线移动
+            pos = event.scenePos()
+            if obj == self.xy_plot.scene():
+                view_pos = self.xy_plot.vb.mapSceneToView(pos)
+                x_idx = int(view_pos.y())
+                y_idx = int(view_pos.x())
+                z_idx = int(self.crosshair_xz.pos()[1])
+                self.update_orthogonal_views(x_idx, y_idx, z_idx, update_xy=False)
+                self.update_crosshairs(x_idx, y_idx, z_idx)
+            elif obj == self.xz_plot.scene():
+                view_pos = self.xz_plot.vb.mapSceneToView(pos)
+                x_idx = int(view_pos.x())
+                z_idx = int(view_pos.y())
+                y_idx = int(self.crosshair_yz.pos()[1])
+                self.update_orthogonal_views(x_idx, y_idx, z_idx, update_xz=False)
+                self.update_crosshairs(x_idx, y_idx, z_idx)
+            elif obj == self.yz_plot.scene():
+                view_pos = self.yz_plot.vb.mapSceneToView(pos)
+                y_idx = int(view_pos.y())
+                z_idx = int(view_pos.x())
+                x_idx = int(self.crosshair_xy.pos()[0])
+                self.update_orthogonal_views(x_idx, y_idx, z_idx, update_yz=False)
+                self.update_crosshairs(x_idx, y_idx, z_idx)
+
+        return super().eventFilter(obj, event)
 
     def on_mouse_click(self, event):
         """根据鼠标点击更新十字线和视图"""
