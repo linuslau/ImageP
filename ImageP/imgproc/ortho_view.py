@@ -229,21 +229,21 @@ class OrthogonalViewWidget(QWidget):
                 y_idx = int(view_pos.x())
                 z_idx = int(self.crosshair_xz.pos()[1])
                 self.update_orthogonal_views(x_idx, y_idx, z_idx, update_xy=False)
-                self.update_crosshairs(x_idx, y_idx, z_idx)
+                # self.update_crosshairs(x_idx, y_idx, z_idx)
             elif obj == self.xz_plot.scene():
                 view_pos = self.xz_plot.vb.mapSceneToView(pos)
                 x_idx = int(view_pos.x())
                 z_idx = int(view_pos.y())
                 y_idx = int(self.crosshair_yz.pos()[1])
                 self.update_orthogonal_views(x_idx, y_idx, z_idx, update_xz=False)
-                self.update_crosshairs(x_idx, y_idx, z_idx)
+                # self.update_crosshairs(x_idx, y_idx, z_idx)
             elif obj == self.yz_plot.scene():
                 view_pos = self.yz_plot.vb.mapSceneToView(pos)
                 y_idx = int(view_pos.y())
                 z_idx = int(view_pos.x())
                 x_idx = int(self.crosshair_xy.pos()[0])
                 self.update_orthogonal_views(x_idx, y_idx, z_idx, update_yz=False)
-                self.update_crosshairs(x_idx, y_idx, z_idx)
+                # self.update_crosshairs(x_idx, y_idx, z_idx)
 
         return super().eventFilter(obj, event)
 
