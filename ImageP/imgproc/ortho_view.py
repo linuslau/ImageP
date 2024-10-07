@@ -150,6 +150,11 @@ class OrthogonalViewWidget(QWidget):
     def update_orthogonal_views(self, x_idx, y_idx, z_idx, update_xy=True, update_xz=True, update_yz=True):
         """更新正交视图（XY, XZ, YZ平面），使用当前截面"""
 
+        # 确保索引不超出图像范围
+        x_idx = np.clip(x_idx, 0, self.shape[2] - 1)
+        y_idx = np.clip(y_idx, 0, self.shape[1] - 1)
+        z_idx = np.clip(z_idx, 0, self.shape[0] - 1)
+
         if update_xy:
             # XY平面（俯视图，Z恒定）
             xy_slice = self.image_data[z_idx, :, :]
