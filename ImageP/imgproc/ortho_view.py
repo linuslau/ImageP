@@ -60,6 +60,21 @@ class OrthogonalViewWidget(QWidget):
         self.xz_plot.addItem(self.xz_image)
         self.yz_plot.addItem(self.yz_image)
 
+        # 隐藏底部X轴，并将X轴刻度移动到顶部
+        self.xy_plot.getAxis('bottom').setStyle(showValues=False)  # 隐藏底部的X轴刻度
+        self.xy_plot.showAxis('top')  # 显示顶部X轴
+        self.xy_plot.getAxis('top').setStyle(showValues=True)  # 显示顶部的X轴刻度
+
+        # 隐藏底部X轴，并将X轴刻度移动到顶部
+        self.xz_plot.getAxis('bottom').setStyle(showValues=False)  # 隐藏底部的X轴刻度
+        self.xz_plot.showAxis('top')  # 显示顶部X轴
+        self.xz_plot.getAxis('top').setStyle(showValues=True)  # 显示顶部的X轴刻度
+
+        # 隐藏底部X轴，并将X轴刻度移动到顶部
+        self.yz_plot.getAxis('bottom').setStyle(showValues=False)  # 隐藏底部的X轴刻度
+        self.yz_plot.showAxis('top')  # 显示顶部X轴
+        self.yz_plot.getAxis('top').setStyle(showValues=True)  # 显示顶部的X轴刻度
+
         # 将十字线添加到相应视图
         self.xy_plot.addItem(self.crosshair_xy)
         self.xy_plot.addItem(self.crosshair_xy_v)
@@ -71,9 +86,9 @@ class OrthogonalViewWidget(QWidget):
         self.yz_plot.addItem(self.crosshair_yz_v)
 
         # 设置各个视图的大小（调大）
-        self.xy_widget.setMinimumSize(500, 500)
-        self.xz_widget.setMinimumSize(500, 500)
-        self.yz_widget.setMinimumSize(500, 500)
+        self.xy_widget.setMinimumSize(700, 700)
+        self.xz_widget.setMinimumSize(700, 700)
+        self.yz_widget.setMinimumSize(700, 700)
 
         self.xy_widget.addItem(self.xy_plot)
         self.xz_widget.addItem(self.xz_plot)
@@ -105,7 +120,7 @@ class OrthogonalViewWidget(QWidget):
         self.setLayout(layout)
 
         # 初始化正交视图
-		# self.update_orthogonal_views(0, 0, 0)
+        # self.update_orthogonal_views(0, 0, 0)
         print(f"Initializing orthogonal views with center: x_idx={self.center_x_idx}, y_idx={self.center_y_idx}, z_idx={self.center_z_idx}")
         self.update_orthogonal_views(self.center_x_idx, self.center_y_idx, self.center_z_idx)
 
@@ -123,7 +138,7 @@ class OrthogonalViewWidget(QWidget):
         self.showEvent(None)  # 使用showEvent
 
         # 启动时最大化窗口
-        self.showMaximized()
+        # self.showMaximized()
 
     def showEvent(self, event):
         """在窗口显示时进行居中操作"""
@@ -146,12 +161,12 @@ class OrthogonalViewWidget(QWidget):
 
     def update_crosshairs(self, x_idx, y_idx, z_idx):
         """在各个视图中更新十字线位置"""
-        print(f"Updating crosshairs to: x_idx={x_idx}, y_idx={y_idx}, z_idx={z_idx}")
-        self.crosshair_xy.setPos(x_idx)
+        print(f"\nUpdating crosshairs to: x_idx={x_idx}, y_idx={y_idx}, z_idx={z_idx}")
+        self.crosshair_xy.setPos(y_idx)
         self.crosshair_xz.setPos(z_idx)
         self.crosshair_yz.setPos(y_idx)
 
-        self.crosshair_xy_v.setPos(y_idx)
+        self.crosshair_xy_v.setPos(x_idx)
         self.crosshair_xz_v.setPos(x_idx)
         self.crosshair_yz_v.setPos(z_idx)
 
@@ -159,7 +174,7 @@ class OrthogonalViewWidget(QWidget):
         """更新正交视图（XY, XZ, YZ平面），使用当前截面"""
 
         # 确保索引不超出图像范围
-        print(f"Received indices for update: x_idx={x_idx}, y_idx={y_idx}, z_idx={z_idx}")
+        print(f"\nReceived indices for update: x_idx={x_idx}, y_idx={y_idx}, z_idx={z_idx}")
         x_idx = np.clip(x_idx, 0, self.shape[2] - 1)
         y_idx = np.clip(y_idx, 0, self.shape[1] - 1)
         z_idx = np.clip(z_idx, 0, self.shape[0] - 1)
@@ -169,11 +184,12 @@ class OrthogonalViewWidget(QWidget):
             # XY平面（俯视图，Z恒定）
             xy_slice = self.image_data[z_idx, :, :]
             print(f"Updating XY view at z_idx={z_idx}")
-            self.xy_image.setImage(np.rot90(xy_slice, 1))  # 纠正图像显示方向
+            # self.xy_image.setImage(np.rot90(xy_slice, 1))  # 纠正图像显示方向
+            self.xy_image.setImage(xy_slice)  # 纠正图像显示方向
 
         if update_xz:
             # XZ平面（垂直剖面，Y恒定）
-            xz_slice = self.image_data[:, y_idx, :]
+            xz_slice = np.flip(self.image_data[:, y_idx, :], axis=1)  # 水平翻转XZ切片
             print(f"Updating XZ view at y_idx={y_idx}")
             self.xz_image.setImage(np.rot90(xz_slice, 1))  # 纠正图像显示方向
 
@@ -225,8 +241,8 @@ class OrthogonalViewWidget(QWidget):
             pos = event.scenePos()
             if obj == self.xy_plot.scene():
                 view_pos = self.xy_plot.vb.mapSceneToView(pos)
-                x_idx = int(view_pos.y())
-                y_idx = int(view_pos.x())
+                x_idx = int(view_pos.x())
+                y_idx = int(view_pos.y())
                 z_idx = int(self.crosshair_xz.pos()[1])
                 self.update_orthogonal_views(x_idx, y_idx, z_idx, update_xy=False)
                 # self.update_crosshairs(x_idx, y_idx, z_idx)
@@ -241,7 +257,7 @@ class OrthogonalViewWidget(QWidget):
                 view_pos = self.yz_plot.vb.mapSceneToView(pos)
                 y_idx = int(view_pos.y())
                 z_idx = int(view_pos.x())
-                x_idx = int(self.crosshair_xy.pos()[0])
+                x_idx = int(self.crosshair_xy_v.pos()[0])
                 self.update_orthogonal_views(x_idx, y_idx, z_idx, update_yz=False)
                 # self.update_crosshairs(x_idx, y_idx, z_idx)
 
@@ -250,13 +266,13 @@ class OrthogonalViewWidget(QWidget):
     def on_mouse_click(self, event):
         """根据鼠标点击更新十字线和视图"""
         pos = event.scenePos()
-        print(f"Mouse clicked at position: {pos}")
+        print(f"\n\nMouse clicked at position: {pos}")
 
         # 获取点击位置并映射到相应视图的坐标
         if self.xy_plot.sceneBoundingRect().contains(pos) and self.xy_plot.isUnderMouse():
             view_pos = self.xy_plot.vb.mapSceneToView(pos)
-            x_idx = int(view_pos.y())  # 交换 X 和 Y，使得点击的横向移动和纵向移动正确
-            y_idx = int(view_pos.x())  # 点击右移对应 Y 轴，点击下移对应 X 轴
+            x_idx = int(view_pos.x())  # 交换 X 和 Y，使得点击的横向移动和纵向移动正确
+            y_idx = int(view_pos.y())  # 点击右移对应 Y 轴，点击下移对应 X 轴
             z_idx = int(self.crosshair_xz.pos()[1])  # 保持XZ平面上的Z不变
 
             print(f"Updating after XY plot click: x_idx={x_idx}, y_idx={y_idx}, z_idx={z_idx}")
@@ -277,7 +293,7 @@ class OrthogonalViewWidget(QWidget):
             view_pos = self.yz_plot.vb.mapSceneToView(pos)
             y_idx = int(view_pos.y())  # 点击上下移动对应 Y 轴
             z_idx = int(view_pos.x())  # 点击左右移动对应 Z 轴
-            x_idx = int(self.crosshair_xy.pos()[0])  # 保持XY平面上的X不变
+            x_idx = int(self.crosshair_xy_v.pos()[0])  # 保持XY平面上的X不变
 
             print(f"Updating after YZ plot click: x_idx={x_idx}, y_idx={y_idx}, z_idx={z_idx}")
             # 只更新 XY 和 XZ 图像，不更新 YZ 图像
