@@ -202,9 +202,21 @@ class OrthogonalViewWidget(QWidget):
         # 更新十字线位置
         self.update_crosshairs(x_idx, y_idx, z_idx)
 
+    def apply_view_all_to_all(self):
+        """同步执行所有视图的 View All（自动缩放）"""
+        self.xy_plot.getViewBox().autoRange()  # 自动调整XY视图
+        self.xz_plot.getViewBox().autoRange()  # 自动调整XZ视图
+        self.yz_plot.getViewBox().autoRange()  # 自动调整YZ视图
+
     # 事件过滤器中，明确禁用左击拖动
     def eventFilter(self, obj, event):
         """处理鼠标事件"""
+        # 鼠标双击事件，执行同步的 View All 操作
+        if event.type() == pg.QtCore.QEvent.GraphicsSceneMouseDoubleClick:
+            # 双击时执行 View All 操作
+            self.apply_view_all_to_all()  # 调用同步 View All 函数
+            return True  # 表示事件已经处理，阻止进一步传播
+
         if event.type() == pg.QtCore.QEvent.GraphicsSceneWheel:
             # 获取滚动的角度，直接使用 event.delta() 而不是 event.angleDelta().y()
             delta = event.delta()
