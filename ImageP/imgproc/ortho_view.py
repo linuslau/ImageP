@@ -205,6 +205,20 @@ class OrthogonalViewWidget(QWidget):
     # 事件过滤器中，明确禁用左击拖动
     def eventFilter(self, obj, event):
         """处理鼠标事件"""
+        if event.type() == pg.QtCore.QEvent.GraphicsSceneWheel:
+            # 获取滚动的角度，直接使用 event.delta() 而不是 event.angleDelta().y()
+            delta = event.delta()
+
+            # 将滚动的比例应用到所有视图，保持同步
+            scale_factor = 1.1 if delta > 0 else 0.9
+
+            # 应用缩放到每个视图
+            self.xy_plot.getViewBox().scaleBy((scale_factor, scale_factor))
+            self.xz_plot.getViewBox().scaleBy((scale_factor, scale_factor))
+            self.yz_plot.getViewBox().scaleBy((scale_factor, scale_factor))
+
+            return True  # 处理完事件后返回 True
+
         if event.type() == pg.QtCore.QEvent.GraphicsSceneMousePress:
             if event.button() == Qt.LeftButton:
                 # 鼠标左键按下，标记为 True
