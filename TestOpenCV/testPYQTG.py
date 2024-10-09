@@ -651,6 +651,13 @@ class ImageWithRect(QWidget):
         # Connect mouse move signal
         self.plot_item.scene().sigMouseMoved.connect(self.on_mouse_move)
 
+    def closeEvent(self, event):
+        # 调用 state_manager 将图像设置为 None
+        state_manager.set_image_data(None)
+
+        # 调用父类的 closeEvent 来确保窗口正常关闭
+        super().closeEvent(event)
+
     def render_3d_image(self):
         # Now use the file_path stored in the class
         subprocess.Popen(['python', '../TestOpenCV/test3DRender.py', self.file_path])
