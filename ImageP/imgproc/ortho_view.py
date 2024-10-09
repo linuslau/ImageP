@@ -4,6 +4,8 @@ import pyqtgraph as pg
 import numpy as np
 import sys
 
+from ImageP.utils.state_manager import state_manager
+
 class OrthogonalViewWidget(QWidget):
     def __init__(self, image_data):
         super().__init__()
@@ -328,6 +330,47 @@ class OrthogonalViewWidget(QWidget):
         else:
             print("Error: Clicked on an unknown view")
             return
+
+
+from PyQt5.QtWidgets import QMessageBox
+
+def start_ortho_view():
+    ortho_app = QApplication.instance()
+    if ortho_app is None:
+        ortho_app = QApplication(sys.argv)
+        created_app = True
+    else:
+        created_app = False
+
+    image_data = state_manager.get_image_data()  # Get image data from state_manager
+
+    # 如果 image_data 为 None，弹出第一个对话框
+    if image_data is None:
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setWindowTitle("No Image")
+        msg_box.setText("There are no images open")
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec_()
+        return
+
+    # 检查 shape 的第一个参数是否为 1，弹出第二个对话框
+    if image_data.shape[0] == 1:
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setWindowTitle("Orthogonal Views")
+        msg_box.setText("This command requires a stack, or a hyperstack with Z > 1.")
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec_()
+        return
+
+    # Create the orthogonal view window
+    global ortho_widget
+    ortho_widget = OrthogonalViewWidget(image_data)
+    ortho_widget.show()
+
+    if created_app:
+        sys.exit(ortho_app.exec_())
 
 
 if __name__ == '__main__':

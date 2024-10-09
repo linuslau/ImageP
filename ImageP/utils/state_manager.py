@@ -2,6 +2,10 @@
 
 class StateManager:
     _instance = None
+    selected_shape_type = None
+    image_data = None
+    clear_previous_lines = None
+    image_with_rect_instance = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -33,10 +37,11 @@ class StateManager:
         return self.image_data
 
     def set_image_with_rect_instance(self, instance):
-        self._image_with_rect_instance = instance
+        self.image_with_rect_instance = instance
 
     def get_image_with_rect_instance(self):
-        return self._image_with_rect_instance
+        return self.image_with_rect_instance
+
 
 # 方便的导出单例实例
 state_manager = StateManager()
