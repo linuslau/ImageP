@@ -101,17 +101,17 @@ class OrthogonalViewWidget(QWidget):
 
         # 分别为每个视图创建垂直布局，将标签放在视图上方
         xy_layout = QVBoxLayout()
-        xy_label = QLabel("XY视图")
+        xy_label = QLabel("XY View")
         xy_layout.addWidget(xy_label)
         xy_layout.addWidget(self.xy_widget)
 
         xz_layout = QVBoxLayout()
-        xz_label = QLabel("XZ视图")
+        xz_label = QLabel("XZ View")
         xz_layout.addWidget(xz_label)
         xz_layout.addWidget(self.xz_widget)
 
         yz_layout = QVBoxLayout()
-        yz_label = QLabel("YZ视图")
+        yz_label = QLabel("YZ View")
         yz_layout.addWidget(yz_label)
         yz_layout.addWidget(self.yz_widget)
 
@@ -365,6 +365,8 @@ def start_ortho_view():
         return
 
     # Create the orthogonal view window
+    # The global keyword is used to ensure the ortho_widget instance persists beyond the function scope,
+    # preventing it from being destroyed after the function exits.
     global ortho_widget
     ortho_widget = OrthogonalViewWidget(image_data)
     ortho_widget.show()
