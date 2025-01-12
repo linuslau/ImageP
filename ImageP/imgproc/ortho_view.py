@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QHBoxLayout
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QHBoxLayout, QGridLayout
 import pyqtgraph as pg
 import numpy as np
 import sys
@@ -67,12 +68,12 @@ class OrthogonalViewWidget(QWidget):
         self.xy_plot.showAxis('top')  # 显示顶部X轴
         self.xy_plot.getAxis('top').setStyle(showValues=True)  # 显示顶部的X轴刻度
 
-        # 隐藏底部X轴，并将X轴刻度移动到顶部
+		# 隐藏底部X轴，并将X轴刻度移动到顶部
         self.xz_plot.getAxis('bottom').setStyle(showValues=False)  # 隐藏底部的X轴刻度
         self.xz_plot.showAxis('top')  # 显示顶部X轴
         self.xz_plot.getAxis('top').setStyle(showValues=True)  # 显示顶部的X轴刻度
 
-        # 隐藏底部X轴，并将X轴刻度移动到顶部
+		# 隐藏底部X轴，并将X轴刻度移动到顶部
         self.yz_plot.getAxis('bottom').setStyle(showValues=False)  # 隐藏底部的X轴刻度
         self.yz_plot.showAxis('top')  # 显示顶部X轴
         self.yz_plot.getAxis('top').setStyle(showValues=True)  # 显示顶部的X轴刻度
@@ -96,33 +97,28 @@ class OrthogonalViewWidget(QWidget):
         self.xz_widget.addItem(self.xz_plot)
         self.yz_widget.addItem(self.yz_plot)
 
-        # 布局修改：将三个视图横向排列
-        layout = QHBoxLayout()  # 改为水平布局
+        # 创建网格布局
+        layout = QGridLayout()
 
-        # 分别为每个视图创建垂直布局，将标签放在视图上方
-        xy_layout = QVBoxLayout()
-        xy_label = QLabel("XY View")
-        xy_layout.addWidget(xy_label)
-        xy_layout.addWidget(self.xy_widget)
+        # 添加三个视图和一个占位符到网格布局
+        layout.addWidget(QLabel("XY View"), 0, 0)
+        layout.addWidget(self.xy_widget, 1, 0)
 
-        xz_layout = QVBoxLayout()
-        xz_label = QLabel("XZ View")
-        xz_layout.addWidget(xz_label)
-        xz_layout.addWidget(self.xz_widget)
+        layout.addWidget(QLabel("YZ View"), 0, 1)
+        layout.addWidget(self.yz_widget, 1, 1)
 
-        yz_layout = QVBoxLayout()
-        yz_label = QLabel("YZ View")
-        yz_layout.addWidget(yz_label)
-        yz_layout.addWidget(self.yz_widget)
+        layout.addWidget(QLabel("XZ View"), 2, 0)
+        layout.addWidget(self.xz_widget, 3, 0)
 
-        layout.addLayout(xy_layout)
-        layout.addLayout(xz_layout)
-        layout.addLayout(yz_layout)
+        # 添加一个空占位控件
+        placeholder = QWidget()
+        layout.addWidget(placeholder, 3, 1)
 
+        # 设置布局
         self.setLayout(layout)
 
         # 初始化正交视图
-        # self.update_orthogonal_views(0, 0, 0)
+		# self.update_orthogonal_views(0, 0, 0)
         print(f"Initializing orthogonal views with center: x_idx={self.center_x_idx}, y_idx={self.center_y_idx}, z_idx={self.center_z_idx}")
         self.update_orthogonal_views(self.center_x_idx, self.center_y_idx, self.center_z_idx)
 
@@ -138,7 +134,6 @@ class OrthogonalViewWidget(QWidget):
 
         # 居中显示窗口
         self.showEvent(None)  # 使用showEvent
-
         # 启动时最大化窗口
         # self.showMaximized()
 
